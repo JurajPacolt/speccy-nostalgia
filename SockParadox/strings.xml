@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ponožkový Paradox</string>
+    <string name="the_sock">PONOŽKOVÝ</string>
+    <string name="paradox">PARADOX</string>
+    <string name="start">ŠTART</string>
+    <string name="lost_sock_lost_mind">Stratíš ponožku. Stratíš rozum.</string>
+    <string name="welcome_title_text">Textová adventúra</string>
+    <string name="walkthrough">Návod</string>
+    <string name="close">Zavrieť</string>
+    <string name="walkthrough_title">Návod</string>
+    <string name="walkthrough_content">📖 PRÍBEH:\nRáno, 7:55. Budík kričí a ty máš len 5 minút na to, aby si sa dostal na futbalový zápas. Ale kde je tvoja šťastná ponožka?! Nájdeš len jednu... druhá sa stratila niekde v byte. Musíš ju nájsť, inak prehrá tvoj tím!\n\n🎯 CIEĽ:\nNájsť druhú červeno-bielu ponožku a dostaň sa na futbalový zápas.\n\n🗺️ KOMPLETNÝ NÁVOD:\n\n★ ŠTART: SPÁLŇA\n1. ROZHLIADNUŤ SA\n2. Prejdi na CHODBU (⬇️)\n\n★ CHODBA\n3. VZIAŤ ŠNÚRKU\n4. Prejdi do KUCHYNE (⬅️)\n\n★ KUCHYŇA\n5. PREČÍTAŤ LÍSTOK\n6. VZIAŤ KĽÚČ\n7. Návrat na CHODBU (➡️)\n\n★ OBÝVAČKA\n8. Z chodby prejdi do OBÝVAČKY (➡️)\n9. Interakcia s Murom (ROZPRÁVAŤ/POHLADKAŤ)\n10. NAKŔMIŤ MURA\n11. Prejdi POD GAUČ (⬅️)\n\n★ POD GAUČOM\n12. VZIAŤ LÁTKU\n13. Návrat do OBÝVAČKY\n\n★ BALKÓN\n14. Z obývačky prejdi na BALKÓN (➡️)\n15. Interakcia s holubom (ROZPRÁVAŤ)\n16. POUŽIŤ ŠNÚRKU NA HOLUBA\n17. Návrat do OBÝVAČKY (⬅️)\n\n★ KÚPEĽŇA\n18. Z chodby prejdi do KÚPEĽNE (⬇️)\n19. OTVORIŤ PRÁČKU\n20. Prejdi do PRÁČKY\n\n★ PRÁČKA\n21. DAŤ LÁTKU CICE\n22. Návrat do KÚPEĽNE a na CHODBU\n\n★ SPÁLŇA - TAJNÁ SKRINKA\n23. Návrat do SPÁLNE (⬆️)\n24. POUŽIŤ MALÝ KĽÚČ NA SKRINKU\n\n★ FINÁLE - VÍŤAZSTVO!\n25. Prejdi do miestnosti FINÁLE\n26. POZRIEŤ DO TAŠKY\n🎉 VÍŤAZSTVO! Našiel si druhú ponožku!\n\n💡 TIPY:\n• Používaj kompasové šípky pre pohyb\n• Tlačidlo "Akcie" zobrazí dostupné akcie\n• Klikni na "Inventár" pre zobrazenie predmetov\n• Niektoré akcie vyžadujú predmety z inventára\n• Niektoré miestnosti sa odomknú až po splnení akcií\n• ROZPRÁVAŤ s NPC pre zábavné dialógy\n\n🏆 Gratulujem! Vyriešil si Paradox ponožiek!\n\nČas hrania: ~10-15 minút\nNáročnosť: Stredná\nZábavnosť: Vysoká 🎉</string>
+
+    <string name="game_title">Ponožkový paradox</string>
+    <string name="game_subtitle">Domáca komediálna adventúra</string>
+
+    <string name="room_bedroom_name">Spálňa</string>
+    <string name="room_bedroom_desc">Budík reve, je 7:55. Na zemi vidíš len jednu ponožku. Posteľ je v troskách a niekde mňaukne mačka.</string>
+
+    <string name="room_hallway_name">Chodba</string>
+    <string name="room_hallway_desc">Úzka chodba s obrazom strýka a bundou na vešiaku. Na zemi sa váľa šnúrka.</string>
+
+    <string name="room_bathroom_name">Kúpeľňa</string>
+    <string name="room_bathroom_desc">Kúpeľňa plná pasty. Práčka podivne hučí a kôš na bielizeň je prázdny.</string>
+
+    <string name="room_kitchen_name">Kuchyňa</string>
+    <string name="room_kitchen_desc">Vonia tu káva. Na linke leží odkaz od manželky a kľúč od bytu.</string>
+
+    <string name="room_living_room_name">Obývačka</string>
+    <string name="room_living_room_desc">Tu vládne mačka Muro. Na gauči spí a spod neho trčí kúsok látky.</string>
+
+    <string name="room_balcony_name">Balkón</string>
+    <string name="room_balcony_desc">Malý balkón s bielizňou a holubom, ktorý má umelecké ambície.</string>
+
+    <string name="room_sofa_underworld_name">Pod gaučom</string>
+    <string name="room_sofa_underworld_desc">Pod gaučom nájdeš hračku a kúsok látky – zrejme časť stratenej ponožky.</string>
+
+    <string name="room_washing_machine_name">Práčka</string>
+    <string name="room_washing_machine_desc">Z práčky vyskočila Cica. V labkách drží malý kľúčik.</string>
+
+    <string name="room_bedroom_secret_name">Spálňa – skrinka</string>
+    <string name="room_bedroom_secret_desc">Vrátil si sa do spálne a otvoril zamknutú skrinku. Vo vnútri je len vtipný odkaz.</string>
+
+    <string name="room_final_name">Finále</string>
+    <string name="room_final_desc">Stojíš v chodbe s bundou a kľúčom. Vo vaku nachádzaš druhú ponožku. Máš pár!</string>
+
+    <string name="obj_sock1_name">Červeno-biela ponožka (ľavá)</string>
+    <string name="obj_sock1_desc">Tvoja víťazná ponožka s logom obľúbeného tímu.</string>
+
+    <string name="obj_sock2_name">Červeno-biela ponožka (pravá)</string>
+    <string name="obj_sock2_desc">Stratená ponožka, ktorá spôsobila všetky tvoje problémy.</string>
+
+    <string name="obj_string_name">Šnúrka</string>
+    <string name="obj_string_desc">Zdanlivo bezcenný kúsok šnúrky, ale možno sa zíde.</string>
+
+    <string name="obj_key_name">Kľúč od bytu</string>
+    <string name="obj_key_desc">Kovový kľúč, ktorý ťa konečne dostane von z bytu.</string>
+
+    <string name="obj_cloth_name">Kúsok látky</string>
+    <string name="obj_cloth_desc">Už ohryzený zvyšok tvojej stratenej ponožky.</string>
+
+    <string name="obj_small_key_name">Malý kľúčik</string>
+    <string name="obj_small_key_desc">Cica ho pustila po vyjednávaní. Hodí sa na zamknutú skrinku.</string>
+
+    <string name="obj_note_name">Odkaz od manželky</string>
+    <string name="obj_note_desc">Šla som k mame. Mačku si nekŕmil! A nehľadaj ponožky v chladničke.</string>
+
+    <string name="obj_dirty_jacket_name">Zašpinená bunda</string>
+    <string name="obj_dirty_jacket_desc">Holub sa na nej umelecky vyjadril.</string>
+
+    <string name="obj_card_name">Kartička</string>
+    <string name="obj_card_desc">Malý papierik s textom: „V tvojom obľúbenom športovom vaku!“</string>
+
+    <string name="npc_muro_name">Kocúr Muro</string>
+    <string name="npc_muro_desc">Tvoj lenivý, sebavedomý kocúr, ktorý si myslí, že byt patrí jemu.</string>
+    <string name="npc_muro_talk">Muro lenivo mňauká, ale odmieta sa pohnúť z gauča.</string>
+    <string name="npc_muro_pet">Pohladkáš Mura. Užíva si to, ale stále sa nehýbe.</string>
+
+    <string name="npc_cica_name">Mačka Cica</string>
+    <string name="npc_cica_desc">Zvedavá a mierne prefíkaná mačka, ktorá sa rada hrá s ponožkami.</string>
+    <string name="npc_cica_talk">Cica tajomne mňauká a ukazuje ti malý lesklý predmet.</string>
+    <string name="npc_cica_look">Cica má niečo v labkách – vyzerá to ako malý kľúčik!</string>
+
+    <string name="npc_pigeon_name">Holub umelec</string>
+    <string name="npc_pigeon_desc">Holub s dušou impresionistu, ktorý rád zanecháva svoj podpis.</string>
+    <string name="npc_pigeon_talk">Vrkú vrkú! Holub sa zdá byť zaujatý leskľými vecami.</string>
+
+    <string name="action_look_around">POZRI SA</string>
+    <string name="action_look_around_result">Vidíš len jednu ponožku. Kde môže byť druhá?</string>
+
+    <string name="action_take_string">ZOBER ŠNÚRKU</string>
+    <string name="action_take_string_result">Zobral si šnúrku. Vyzerá nepotrebne, ale nikdy nevieš.</string>
+
+    <string name="action_open_washer">OTVOR PRÁČKU</string>
+    <string name="action_open_washer_result">Z práčky sa ozve tiché mňau. Niečo tam je!</string>
+
+    <string name="action_read_note">POZRI SA NA ODKAZ</string>
+    <string name="action_read_note_result">„Šla som k mame. Mačku si nekŕmil! A nehľadaj ponožky v chladničke.“</string>
+
+    <string name="action_take_key">ZOBER KĽÚČ</string>
+    <string name="action_take_key_result">Zobral si kľúč od bytu.</string>
+
+    <string name="action_move_couch">POHNI GAUČOM</string>
+    <string name="action_move_couch_result">Nejde to, je ťažký. Možno by pomohlo dať Murovi jedlo.</string>
+
+    <string name="action_feed_muro">NAKŔM MURA</string>
+    <string name="action_feed_muro_result">Muro sa spokojne odvalí z gauča a odhalí tmavú dieru pod ním.</string>
+
+    <string name="action_use_string_pigeon">POUŽI ŠNÚRKU NA HOLUBA</string>
+    <string name="action_use_string_pigeon_result">Holub odletí, no neskôr sa vráti a zanechá darček na bunde.</string>
+
+    <string name="action_take_fabric">ZOBER LÁTKU</string>
+    <string name="action_take_fabric_result">Zobral si kúsok stratenej ponožky.</string>
+
+    <string name="action_give_fabric_cica">DAJ LÁTKU CICE</string>
+    <string name="action_give_fabric_cica_result">Cica spokojne zamňauká a pustí malý kľúčik.</string>
+
+    <string name="action_use_smallkey_cabinet">POUŽI MALÝ KĽÚČ NA SKRINKU</string>
+    <string name="action_use_smallkey_cabinet_result">Otvoril si skrinku. Vo vnútri je len papierik s odkazom.</string>
+
+    <string name="action_look_bag">POZRI SA DO VAKU</string>
+    <string name="action_look_bag_result">Víťazstvo! Našiel si druhú ponožku a vyriešil Ponožkový paradox!</string>
+
+    <string name="ending_message">Gratulujem, Fero! Ponožkový paradox vyriešený!</string>
+
+    <string name="quit_game">Ukončiť hru</string>
+    <string name="quit_game_title">Ukončiť hru?</string>
+    <string name="quit_game_message">Naozaj chcete ukončiť hru?</string>
+    <string name="yes">Áno</string>
+    <string name="no">Nie</string>
+    <string name="menu">Menu</string>
+
+    <string name="trigger_talk">ROZPRÁVAŤ</string>
+    <string name="trigger_pet">POHLADKAŤ</string>
+    <string name="trigger_look">POZRIEŤ</string>
+
+    <string name="no_actions_available">Žiadne dostupné akcie</string>
+    <string name="inventory_empty">Inventár je prázdny</string>
+    <string name="inventory_title">Inventár</string>
+    <string name="congratulations">Gratulujem!</string>
+    <string name="end_game">Koniec</string>
+    <string name="actions">Akcie</string>
+    <string name="inventory">Inventár</string>
+    <string name="choose_action">Zvoľte akciu</string>
+    <string name="settings">Nastavenia</string>
+    <string name="settings_title">Možnosti hry</string>
+    <string name="settings_message">Máte uloženú hru. Čo chcete urobiť?</string>
+    <string name="continue_game">Pokračovať v hre</string>
+    <string name="reset_game">Resetovať hru</string>
+    <string name="reset_game_title">Resetovať hru?</string>
+    <string name="reset_game_message">Naozaj chcete vymazať svoj uložený herný progres?</string>
+    <string name="cancel">Zrušiť</string>
+
+</resources>

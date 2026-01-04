@@ -1,0 +1,196 @@
+{
+  "objectDefinitions": [
+    { "code": "SOCK1", "nameKey": "obj_sock1_name", "descriptionKey": "obj_sock1_desc" },
+    { "code": "SOCK2", "nameKey": "obj_sock2_name", "descriptionKey": "obj_sock2_desc" },
+    { "code": "STRING", "nameKey": "obj_string_name", "descriptionKey": "obj_string_desc" },
+    { "code": "KEY", "nameKey": "obj_key_name", "descriptionKey": "obj_key_desc" },
+    { "code": "CLOTH", "nameKey": "obj_cloth_name", "descriptionKey": "obj_cloth_desc" },
+    { "code": "SMALL_KEY", "nameKey": "obj_small_key_name", "descriptionKey": "obj_small_key_desc" },
+    { "code": "NOTE", "nameKey": "obj_note_name", "descriptionKey": "obj_note_desc" },
+    { "code": "DIRTY_JACKET", "nameKey": "obj_dirty_jacket_name", "descriptionKey": "obj_dirty_jacket_desc" },
+    { "code": "CARD", "nameKey": "obj_card_name", "descriptionKey": "obj_card_desc" }
+  ],
+  "npcs": [
+    {
+      "code": "MURO",
+      "nameKey": "npc_muro_name",
+      "descriptionKey": "npc_muro_desc",
+      "dialogues": [
+        { "trigger": "TALK", "textKey": "npc_muro_talk" },
+        { "trigger": "PET", "textKey": "npc_muro_pet" }
+      ],
+      "actions": [
+        {
+          "commandKey": "action_feed_muro",
+          "conditions": [{ "hasObject": "NOTE" }],
+          "resultKey": "action_feed_muro_result",
+          "effects": [{ "unlockRoom": "SOFA_UNDERWORLD" }]
+        }
+      ]
+    },
+    {
+      "code": "CICA",
+      "nameKey": "npc_cica_name",
+      "descriptionKey": "npc_cica_desc",
+      "dialogues": [
+        { "trigger": "TALK", "textKey": "npc_cica_talk" },
+        { "trigger": "LOOK", "textKey": "npc_cica_look" }
+      ],
+      "actions": [
+        {
+          "commandKey": "action_give_fabric_cica",
+          "conditions": [{ "hasObject": "CLOTH" }],
+          "resultKey": "action_give_fabric_cica_result",
+          "effects": [{ "addToInventory": "SMALL_KEY" }]
+        }
+      ]
+    },
+    {
+      "code": "PIGEON",
+      "nameKey": "npc_pigeon_name",
+      "descriptionKey": "npc_pigeon_desc",
+      "dialogues": [{ "trigger": "TALK", "textKey": "npc_pigeon_talk" }],
+      "actions": [
+        {
+          "commandKey": "action_use_string_pigeon",
+          "conditions": [{ "hasObject": "STRING" }],
+          "resultKey": "action_use_string_pigeon_result",
+          "effects": [{ "addToInventory": "DIRTY_JACKET" }]
+        }
+      ]
+    }
+  ],
+  "rooms": [
+    {
+      "roomCode": "BEDROOM",
+      "nameKey": "room_bedroom_name",
+      "descriptionKey": "room_bedroom_desc",
+      "imageResource": "bedroom",
+      "objects": ["SOCK1"],
+      "compass": [
+        { "direction": "SOUTH", "wayTo": "HALLWAY" },
+        { "direction": "EAST", "wayTo": "BEDROOM_SECRET" }
+      ],
+      "actions": [
+        { "commandKey": "action_look_around", "resultKey": "action_look_around_result", "effects": [], "repeatable": true },
+        { 
+          "commandKey": "action_use_smallkey_cabinet", 
+          "conditions": [{ "hasObject": "SMALL_KEY" }],
+          "resultKey": "action_use_smallkey_cabinet_result", 
+          "effects": [{ "unlockRoom": "BEDROOM_SECRET" }] 
+        }
+      ]
+    },
+    {
+      "roomCode": "HALLWAY",
+      "nameKey": "room_hallway_name",
+      "descriptionKey": "room_hallway_desc",
+      "imageResource": "hallway",
+      "objects": ["STRING"],
+      "compass": [
+        { "direction": "NORTH", "wayTo": "BEDROOM" },
+        { "direction": "EAST", "wayTo": "LIVING_ROOM" },
+        { "direction": "WEST", "wayTo": "KITCHEN" },
+        { "direction": "SOUTH", "wayTo": "BATHROOM" }
+      ],
+      "actions": [
+        { "commandKey": "action_take_string", "resultKey": "action_take_string_result", "effects": [{ "addToInventory": "STRING" }] }
+      ]
+    },
+    {
+      "roomCode": "BATHROOM",
+      "nameKey": "room_bathroom_name",
+      "descriptionKey": "room_bathroom_desc",
+      "imageResource": "bathroom",
+      "objects": [],
+      "compass": [
+        { "direction": "NORTH", "wayTo": "HALLWAY" },
+        { "direction": "SOUTH", "wayTo": "WASHING_MACHINE" }
+      ],
+      "actions": [
+        { "commandKey": "action_open_washer", "resultKey": "action_open_washer_result", "effects": [{ "unlockRoom": "WASHING_MACHINE" }] }
+      ]
+    },
+    {
+      "roomCode": "KITCHEN",
+      "nameKey": "room_kitchen_name",
+      "descriptionKey": "room_kitchen_desc",
+      "imageResource": "kitchen",
+      "objects": ["NOTE", "KEY"],
+      "compass": [{ "direction": "EAST", "wayTo": "HALLWAY" }],
+      "actions": [
+        { "commandKey": "action_read_note", "resultKey": "action_read_note_result", "effects": [{ "addToInventory": "NOTE" }], "repeatable": true },
+        { "commandKey": "action_take_key", "resultKey": "action_take_key_result", "effects": [{ "addToInventory": "KEY" }] }
+      ]
+    },
+    {
+      "roomCode": "LIVING_ROOM",
+      "nameKey": "room_living_room_name",
+      "descriptionKey": "room_living_room_desc",
+      "imageResource": "livingroom",
+      "objects": [],
+      "npcs": ["MURO"],
+      "compass": [
+        { "direction": "WEST", "wayTo": "HALLWAY" },
+        { "direction": "EAST", "wayTo": "BALCONY" },
+        { "direction": "SOUTH", "wayTo": "SOFA_UNDERWORLD" }
+      ],
+      "actions": [
+        { "commandKey": "action_move_couch", "resultKey": "action_move_couch_result", "effects": [], "repeatable": true }
+      ]
+    },
+    {
+      "roomCode": "BALCONY",
+      "nameKey": "room_balcony_name",
+      "descriptionKey": "room_balcony_desc",
+      "imageResource": "balcony",
+      "objects": [],
+      "npcs": ["PIGEON"],
+      "compass": [{ "direction": "WEST", "wayTo": "LIVING_ROOM" }]
+    },
+    {
+      "roomCode": "SOFA_UNDERWORLD",
+      "nameKey": "room_sofa_underworld_name",
+      "descriptionKey": "room_sofa_underworld_desc",
+      "imageResource": "couch",
+      "objects": ["CLOTH"],
+      "compass": [{ "direction": "NORTH", "wayTo": "LIVING_ROOM" }],
+      "actions": [
+        { "commandKey": "action_take_fabric", "resultKey": "action_take_fabric_result", "effects": [{ "addToInventory": "CLOTH" }] }
+      ]
+    },
+    {
+      "roomCode": "WASHING_MACHINE",
+      "nameKey": "room_washing_machine_name",
+      "descriptionKey": "room_washing_machine_desc",
+      "imageResource": "washing_machine_inside",
+      "objects": [],
+      "npcs": ["CICA"],
+      "compass": [{ "direction": "NORTH", "wayTo": "BATHROOM" }]
+    },
+    {
+      "roomCode": "BEDROOM_SECRET",
+      "nameKey": "room_bedroom_secret_name",
+      "descriptionKey": "room_bedroom_secret_desc",
+      "imageResource": "bedroom_continue",
+      "objects": ["CARD"],
+      "compass": [
+        { "direction": "SOUTH", "wayTo": "HALLWAY" },
+        { "direction": "WEST", "wayTo": "BEDROOM" },
+        { "direction": "EAST", "wayTo": "FINAL" }
+      ],
+      "actions": []
+    },
+    {
+      "roomCode": "FINAL",
+      "nameKey": "room_final_name",
+      "descriptionKey": "room_final_desc",
+      "imageResource": "final_success_sock_found",
+      "objects": ["SOCK2"],
+      "compass": [{ "direction": "WEST", "wayTo": "BEDROOM_SECRET" }],
+      "actions": [
+        { "commandKey": "action_look_bag", "resultKey": "action_look_bag_result", "effects": [{ "addToInventory": "SOCK2" }, { "endGame": true }] }
+      ]
+    }
+  ]
+}
