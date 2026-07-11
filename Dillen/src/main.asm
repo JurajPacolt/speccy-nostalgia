@@ -10,14 +10,9 @@
 
         call  ClearScreenToBlack
 
-        call  CleanGameInfoPanelField
-
         call  DrawBorder
 
-        ld    ix,@TitleText
-        ld    hl,@MainFontData
-        ld    de,16384
-        call  Print
+        call  InitGamePanel
 
         ei
         jp    GameMainLoop
@@ -33,12 +28,9 @@
         include "game.asm" ; Here is main game loop.
         include "game_field.asm" ; Game border graphics.
         include "game_info_panel.asm" ; Info panel for game.
+        include "torches_in_rooms.asm" ; Torches with the fire in the rooms.
         include "stars_on_background.asm" ; Stars on background.
         include "animations_in_rooms.asm" ; Individual animations in rooms.
-
-; STRING DATA
-@TitleText:
-        defb    "Skusobny text ... 1 2 3", 0
 
 ; BINARY DATA
 @MainFontData:

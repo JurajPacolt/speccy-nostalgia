@@ -523,6 +523,132 @@ SpriteAttributesExitDoor:
 ; END
 ;-------------------------------------------------------------------------------
 
+;-------------------------------------------------------------------------------
+; BEGIN - Pole of the torch, with the holder for the fire on her top.
+SpriteTorchPole:
+        defb    1,24
+
+SpriteDataTorchPole:
+        defb    %11111111 ; Holder for the fire.
+        defb    %10100101
+        defb    %01111110
+        defb    %00111100
+        defb    %00101100 ; Wood of the pole, with the grain.
+        defb    %00110100
+        defb    %00101100
+        defb    %00111100
+
+        defb    %00101100
+        defb    %00110100
+        defb    %00111100
+        defb    %00101100
+        defb    %00110100
+        defb    %00100100
+        defb    %00111100
+        defb    %00101100
+
+        defb    %00110100
+        defb    %00101100
+        defb    %00111100
+        defb    %00101100
+        defb    %00110100
+        defb    %01111110
+        defb    %11111111 ; Base of the pole on the ground.
+        defb    %10101010
+
+SpriteAttributesTorchPole:
+        defb    6, 6, 6 ; Yellow ink, the wood of the pole.
+; END
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - Fire of the torch, three images. Every image has her own attributes,
+;         so the fire is flickering with the shape and with the color too. The
+;         fire is hot and yellow down, over the holder, and red on her top.
+SpriteFire1:
+        defb    1,16
+
+SpriteDataFire1:
+        defb    %00001000
+        defb    %00010100
+        defb    %00011000
+        defb    %00110100
+        defb    %00101100
+        defb    %01101110
+        defb    %01011110
+        defb    %01111110
+
+        defb    %11011110
+        defb    %10111111
+        defb    %11111111
+        defb    %11111011
+        defb    %01111110
+        defb    %01011100
+        defb    %00111100
+        defb    %00101100
+
+SpriteAttributesFire1:
+        defb    66 ; Bright red ink.
+        defb    70 ; Bright yellow ink.
+
+SpriteFire2:
+        defb    1,16
+
+SpriteDataFire2:
+        defb    %00010000
+        defb    %00101000
+        defb    %00110000
+        defb    %01101000
+        defb    %01011000
+        defb    %01111010
+        defb    %11011110
+        defb    %10111110
+
+        defb    %11111110
+        defb    %11011111
+        defb    %11111111
+        defb    %01111101
+        defb    %01111010
+        defb    %00111010
+        defb    %00111100
+        defb    %00110100
+
+SpriteAttributesFire2:
+        defb    66 ; Bright red ink.
+        defb    66 ; Bright red ink, the fire is flaring up.
+
+SpriteFire3:
+        defb    1,16
+
+SpriteDataFire3:
+        defb    %00000000
+        defb    %00000100
+        defb    %00001000
+        defb    %00001100
+        defb    %00010100
+        defb    %00011010
+        defb    %00101110
+        defb    %00111110
+
+        defb    %01101111
+        defb    %01111101
+        defb    %01111110
+        defb    %00111110
+        defb    %00101100
+        defb    %00111100
+        defb    %00101000
+        defb    %00111100
+
+SpriteAttributesFire3:
+        defb    2  ; Red ink, the fire is going down for a moment.
+        defb    70 ; Bright yellow ink.
+; END
+;-------------------------------------------------------------------------------
+
+SPRITE_TORCH_POLE               equ SpriteTorchPole
+SPRITE_FIRE_1                   equ SpriteFire1
+SPRITE_FIRE_2                   equ SpriteFire2
+SPRITE_FIRE_3                   equ SpriteFire3
 SPRITE_BREAK_DROP_IMAGES        equ SpriteBreakDropImages
 SPRITE_DROP                     equ SpriteDrop
 SPRITE_STONES                   equ SpriteStones
