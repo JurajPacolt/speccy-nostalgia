@@ -19,6 +19,7 @@ ResetGame:
         ld    (LastShowedRoomInMap),a
         ld    a,(StartRoomInMap)
         ld    (ActualRoomInMap),a
+        call  ResetStars
         ret
 ; END - ResetGame
 ;-------------------------------------------------------------------------------

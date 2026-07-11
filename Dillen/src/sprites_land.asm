@@ -1,10 +1,34 @@
 ;-------------------------------------------------------------------------------
-; BEGIN - Breaked drop animation. Withoutm attributes.
-SpriteAnimBreakDrop:
-        defb    3, 24
+; BEGIN - Breaked drop animation, five images. Without attributes.
+; Every image of the animation has 3 characters and 8 pixel lines.
+SPRITE_BREAK_DROP_COUNT         equ 5
 
-SpriteAnimBreakDropData:
-        incbin  "binary/break-a-drop.bin"
+SpriteBreakDropImages:
+        defw    SpriteBreakDrop1
+        defw    SpriteBreakDrop2
+        defw    SpriteBreakDrop3
+        defw    SpriteBreakDrop4
+        defw    SpriteBreakDrop5
+
+SpriteBreakDrop1:
+        defb    3, 8
+        incbin  "binary/break-a-drop.bin", 0, 24
+
+SpriteBreakDrop2:
+        defb    3, 8
+        incbin  "binary/break-a-drop.bin", 24, 24
+
+SpriteBreakDrop3:
+        defb    3, 8
+        incbin  "binary/break-a-drop.bin", 48, 24
+
+SpriteBreakDrop4:
+        defb    3, 8
+        incbin  "binary/break-a-drop.bin", 72, 24
+
+SpriteBreakDrop5:
+        defb    3, 8
+        incbin  "binary/break-a-drop.bin", 96, 24
 ; END
 ;-------------------------------------------------------------------------------
 
@@ -499,7 +523,7 @@ SpriteAttributesExitDoor:
 ; END
 ;-------------------------------------------------------------------------------
 
-SPRITE_ANIM_BREAK_DROP          equ SpriteAnimBreakDrop
+SPRITE_BREAK_DROP_IMAGES        equ SpriteBreakDropImages
 SPRITE_DROP                     equ SpriteDrop
 SPRITE_STONES                   equ SpriteStones
 SPRITE_STONE_FLOOR              equ SpriteStoneFloor
