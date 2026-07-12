@@ -14,7 +14,7 @@
 
         call  InitGamePanel
 
-        ei
+        call  InitAYMusicIM2
         jp    GameMainLoop
 
 ; INCLUDES
@@ -35,6 +35,7 @@
         include "stars_on_background.asm" ; Stars on background.
         include "animations_in_rooms.asm" ; Individual animations in rooms.
         include "death_in_room.asm" ; The Death with the scythe, in room 7.
+        include "ay_music.asm" ; Cheerful AY background music and IM2 player.
 
 ; COMPILER OUTPUT
         savesna "Dillen.sna", @EntryPoint
