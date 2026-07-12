@@ -26,6 +26,7 @@
         include "sprite_utils.asm"
         include "sprites_land.asm"
         include "rooms.asm" ; Showing rooms.
+        include "items_in_rooms.asm" ; Collectible and usable items from the map.
         include "game.asm" ; Here is main game loop.
         include "game_field.asm" ; Game border graphics.
         include "game_info_panel.asm" ; Info panel for game.
@@ -33,6 +34,7 @@
         include "torches_in_rooms.asm" ; Torches with the fire in the rooms.
         include "stars_on_background.asm" ; Stars on background.
         include "animations_in_rooms.asm" ; Individual animations in rooms.
+        include "death_in_room.asm" ; The Death with the scythe, in room 7.
 
 ; COMPILER OUTPUT
         savesna "Dillen.sna", @EntryPoint

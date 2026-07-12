@@ -6,6 +6,7 @@ GameMainLoop:
         call  ShowRoom
         call  ShowGamePanel
         call  TorchesInRooms ; Before the stars, they must know about the fire.
+        call  ItemsInRooms ; Static collectible items, before the stars are placed.
         call  StarOnBackground
         call  AnimationsInRooms
         call  ScanCursorKeysForRoomSwitch
@@ -28,9 +29,11 @@ ResetGame:
         ld    (PlayerEnergy),a
 
         call  ResetGamePanel
+        call  ResetItems
         call  ResetTorches
         call  ResetStars
         call  ResetWind
+        call  ResetDeath
         ret
 ; END - ResetGame
 ;-------------------------------------------------------------------------------

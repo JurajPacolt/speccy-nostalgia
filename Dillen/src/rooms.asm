@@ -118,7 +118,7 @@ RoomSwitcherRoomsMap:
 ;-------------------------------------------------------------------------------
 ; Here is game started, if the player begin.
 StartRoomInMap:
-        defb  013
+        defb  013 ; Map index of Room001 (the old bridge).
 
 ; Actual room, it actually showed.
 ActualRoomInMap:

@@ -25,10 +25,14 @@ _air_jump_1:
         jr    nz, _air_jump_2
         jp  _AIR_Room4
 _air_jump_2:
-        cp    8
+        cp    7
         jr    nz, _air_jump_3
-        jp  _AIR_Room8
+        jp  DeathInRoom ; The Death with the scythe, in death_in_room.asm.
 _air_jump_3:
+        cp    8
+        jr    nz, _air_jump_4
+        jp  _AIR_Room8
+_air_jump_4:
         ret
 ; END - AnimationsInRooms
 ;-------------------------------------------------------------------------------
@@ -55,6 +59,8 @@ AIR_IsCellReserved:
         jr    z,_AIR_ICR_Room1
         cp    3
         jr    z,_AIR_ICR_Room3
+        cp    7
+        jr    z,_AIR_ICR_Room7
         jr    _AIR_ICR_Free
 
 ;----- Room 1 - the draught is blowing up from the chasm. ----------------------
@@ -83,6 +89,13 @@ _AIR_ICR_Room3:
         jr    c,_AIR_ICR_Free
         cp    AIR_ROOM3_SPLASH_X/8+3
         jr    nc,_AIR_ICR_Free
+        jr    _AIR_ICR_Reserved
+
+;----- Room 7 - the Death with the scythe is guarding the path. ----------------
+_AIR_ICR_Room7:
+        call  IsDeathCellReserved ; She knows her own place, no star is
+        jr    c,_AIR_ICR_Reserved ; twinkling through her bones.
+        jr    _AIR_ICR_Free
 
 _AIR_ICR_Reserved:
         scf
