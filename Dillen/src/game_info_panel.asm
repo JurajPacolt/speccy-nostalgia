@@ -5,58 +5,56 @@
 ;###############################################################################
 
 ;-------------------------------------------------------------------------------
-; BEGIN - InitGamePanel - Static graphics of the panel, it's drawn only once.
+; BEGIN - InitGamePanel - The picture of the panel, it's drawn only once. The
+;                         lives, the energy and the room's description are drawn
+;                         to her free places by the game loop.
 InitGamePanel:
         call  CleanGameInfoPanelField
 
-        ; The rule over the game field, with the pattern of her border.
-        ld    c,0
-_GP_InitRule:
+        ; Every character of the picture has her tile in the map.
+        ld    ix,PanelMap
+        ld    b,0 ; Character row.
+_GP_IP_Row:
+        ld    c,0 ; Character column.
+_GP_IP_Cell:
+        ld    a,(ix+0)
+        inc   ix
+        or    a
+        jr    z,_GP_IP_Next ; Empty character.
+
+        dec   a
+        ld    l,a
+        ld    h,0
+        add   hl,hl
+        add   hl,hl
+        add   hl,hl ; Every tile has eight bytes.
+        ld    de,PanelTiles
+        add   hl,de
+        ex    de,hl ; DE - data of the tile.
+
         push  bc
-        ld    b,PANEL_TITLE_ROW
-        push  bc
+        push  de
         call  _GP_CharAddr
-        ld    de,GfxGameBorderItem
+        pop   de
         call  DrawChar
         pop   bc
-        call  _GP_AttrAddr
-        ld    (hl),PANEL_RULE_ATTR
-        pop   bc
+
+_GP_IP_Next:
         inc   c
         ld    a,c
         cp    GAME_INFO_PANEL_WIDTH
-        jr    nz,_GP_InitRule
+        jr    nz,_GP_IP_Cell
+        inc   b
+        ld    a,b
+        cp    PANEL_PICTURE_ROWS
+        jr    nz,_GP_IP_Row
 
-        ; The name of the game, like a plate on the middle of the rule.
-        ld    ix,_GP_TitleText
-        ld    b,PANEL_TITLE_ROW
-        ld    c,PANEL_TITLE_COL
-        call  _GP_PrintText
-        ld    b,PANEL_TITLE_ROW
-        ld    c,PANEL_TITLE_COL
-        ld    d,PANEL_TITLE_LENGTH
-        ld    e,PANEL_TITLE_ATTR
-        call  _GP_FillAttr
-
-        ; The label of the energy.
-        ld    ix,_GP_EnergyText
-        ld    b,PANEL_INFO_ROW
-        ld    c,PANEL_ENERGY_LABEL_COL
-        call  _GP_PrintText
-        ld    b,PANEL_INFO_ROW
-        ld    c,PANEL_ENERGY_LABEL_COL
-        ld    d,PANEL_ENERGY_LABEL_LENGTH
-        ld    e,PANEL_LABEL_ATTR
-        call  _GP_FillAttr
-
-        ; The color of the room's description.
-        ld    b,PANEL_TEXT_ROW
-        ld    c,0
-        ld    d,GAME_INFO_PANEL_WIDTH
-        ld    e,PANEL_TEXT_ATTR
-        call  _GP_FillAttr
-
-        ; The lives, the energy and the description are drawn by the game loop.
+        ; The colors of the picture.
+        ld    hl,PanelAttributes
+        ld    de,GAME_INFO_PANEL_START_ADDRESS_ATTRIBUTES
+        ld    bc,GAME_INFO_PANEL_WIDTH*PANEL_PICTURE_ROWS
+        ldir
+        ret
 ; END - InitGamePanel
 ;-------------------------------------------------------------------------------
 
@@ -67,6 +65,9 @@ ResetGamePanel:
         ld    (_GP_ShowedRoom),a
         ld    (_GP_ShowedLives),a
         ld    (_GP_ShowedEnergy),a
+        ld    (_GP_HeartStep),a ; The beat begins with her first step.
+        ld    a,1
+        ld    (_GP_HeartTimer),a
         ret
 ; END - ResetGamePanel
 ;-------------------------------------------------------------------------------
@@ -94,19 +95,59 @@ _GP_ShowEnergy:
         ld    a,(PlayerEnergy)
         ld    hl,_GP_ShowedEnergy
         cp    (hl)
-        ret   z
+        jr    z,_GP_BeatHearts
         ld    (hl),a
-        jp    _GP_DrawEnergy
+        call  _GP_DrawEnergy
 ; END - ShowGamePanel
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - _GP_BeatHearts - The hearts of the lives are beating like a live heart.
+;                          Every step of the beat has her own image and her own
+;                          time, so the beat is not regular: two fast hits and a
+;                          rest after them.
+_GP_BeatHearts:
+        ld    hl,_GP_HeartTimer
+        dec   (hl)
+        ret   nz ; The actual image of the heart is showed further.
+
+        ; The next step of the beat.
+        ld    hl,_GP_HeartStep
+        inc   (hl)
+        ld    a,(hl)
+        cp    PANEL_HEART_BEAT_STEPS
+        jr    c,_GP_BH_Step
+        xor   a ; The beat begins again.
+        ld    (hl),a
+
+_GP_BH_Step:
+        ; Every step of the beat has three bytes: her image and her time.
+        ld    e,a
+        ld    d,0
+        ld    h,d
+        ld    l,a
+        add   hl,hl
+        add   hl,de
+        ld    de,_GP_HeartBeat
+        add   hl,de
+        ld    e,(hl)
+        inc   hl
+        ld    d,(hl)
+        inc   hl
+        ld    a,(hl)
+        ld    (_GP_HeartTimer),a
+        ld    (_GP_HeartImage),de
+        jp    _GP_DrawLives
+; END - _GP_BeatHearts
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
 ; BEGIN - _GP_DrawLives - The lives of the player, one heart for one life.
 _GP_DrawLives:
         ; Clean the old hearts.
-        ld    b,PANEL_INFO_ROW
+        ld    b,PANEL_LIVES_ROW
         ld    c,PANEL_LIVES_COL
-        ld    a,PANEL_LIVES_MAX*2
+        ld    a,PANEL_LIVES_MAX
         call  _GP_ClearChars
 
         ld    a,(PlayerLives)
@@ -121,17 +162,16 @@ _GP_DL_Hearts:
         ld    c,PANEL_LIVES_COL
 _GP_DL_Heart:
         push  bc
-        ld    b,PANEL_INFO_ROW
+        ld    b,PANEL_LIVES_ROW
         push  bc
         call  _GP_CharAddr
-        ld    de,SpriteDataHeart
+        ld    de,(_GP_HeartImage) ; The actual image of the beat.
         call  DrawChar
         pop   bc
         call  _GP_AttrAddr
         ld    (hl),PANEL_HEART_ATTR
         pop   bc
         inc   c
-        inc   c ; One empty character between two hearts.
         djnz  _GP_DL_Heart
         ret
 ; END - _GP_DrawLives
@@ -165,7 +205,7 @@ _GP_DE_Draw:
         ld    a,(_GP_BarCell)
         add   a,PANEL_ENERGY_COL
         ld    c,a
-        ld    b,PANEL_INFO_ROW
+        ld    b,PANEL_ENERGY_ROW
         push  bc
         call  _GP_CharAddr
         pop   bc
@@ -210,8 +250,8 @@ _GP_EC_Low:
 ; BEGIN - _GP_DrawDescription - The description of the actual room.
 _GP_DrawDescription:
         ld    b,PANEL_TEXT_ROW
-        ld    c,0
-        ld    a,GAME_INFO_PANEL_WIDTH
+        ld    c,PANEL_TEXT_COL
+        ld    a,PANEL_TEXT_LENGTH
         call  _GP_ClearChars
 
         ; Address of the text of the actual room.
@@ -235,22 +275,9 @@ _GP_DrawDescription:
         pop   ix
 
         ld    b,PANEL_TEXT_ROW
-        ld    c,PANEL_TEXT_COL
-        jp    _GP_PrintText
+        ld    c,PANEL_TEXT_HALF_COL
+        jp    Print4x8 ; The font 4x8, two characters in one character of the screen.
 ; END - _GP_DrawDescription
-;-------------------------------------------------------------------------------
-
-;-------------------------------------------------------------------------------
-; BEGIN - _GP_PrintText - Print the text to the panel.
-; IX - Address of the text.
-; B - character row.
-; C - character column.
-_GP_PrintText:
-        call  _GP_CharAddr
-        ex    de,hl ; DE - address in the VRAM.
-        ld    hl,@MainFontData
-        jp    Print
-; END - _GP_PrintText
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
@@ -400,39 +427,33 @@ GAME_INFO_PANEL_WIDTH equ 32
 GAME_INFO_PANEL_HEIGHT equ 4
 
 ;-------------------------------------------------------------------------------
-; Rows of the panel.
-PANEL_TITLE_ROW           equ 0 ; The rule with the name of the game.
-PANEL_INFO_ROW            equ 1 ; The lives and the energy.
-PANEL_TEXT_ROW            equ 2 ; The description of the room.
+; Rows of the picture of the panel.
+PANEL_PICTURE_ROWS        equ 3
 
-; The name of the game.
-PANEL_TITLE_COL           equ 12
-PANEL_TITLE_LENGTH        equ 8
-
-; The lives, one heart for one life, with a space between them.
-PANEL_LIVES_COL           equ 1
+; The lives, one heart for one life. They are in the picture over the flowers.
+PANEL_LIVES_ROW           equ 0
+PANEL_LIVES_COL           equ 27
 PANEL_LIVES_MAX           equ 5
 
-; The energy.
-PANEL_ENERGY_LABEL_COL    equ 12
-PANEL_ENERGY_LABEL_LENGTH equ 6
-PANEL_ENERGY_COL          equ 19
+; The energy, like a bar of the cells under the lives.
+PANEL_ENERGY_ROW          equ 1
+PANEL_ENERGY_COL          equ 22
 PANEL_ENERGY_CELLS        equ 10
 PANEL_ENERGY_LOW          equ 3 ; Under this value is the bar red.
 PANEL_ENERGY_HALF         equ 6 ; Under this value is the bar yellow.
 
-; The description of the room.
+; The description of the room, between the plants on the both edges. It's
+; written with the font 4x8, so there is a place for 60 characters.
+PANEL_TEXT_ROW            equ 2
 PANEL_TEXT_COL            equ 1
+PANEL_TEXT_LENGTH         equ 30
+PANEL_TEXT_HALF_COL       equ PANEL_TEXT_COL*2
 
 ; Number of the rooms in the table with the descriptions.
 PANEL_ROOMS_COUNT         equ 12
 
-; Colors of the panel.
-PANEL_RULE_ATTR           equ 8  ; Black ink on blue, like the game's border.
-PANEL_TITLE_ATTR          equ 79 ; Bright white ink on blue.
+; Colors of the panel. The colors of the picture are in her data.
 PANEL_HEART_ATTR          equ 66 ; Bright red ink.
-PANEL_LABEL_ATTR          equ 70 ; Bright yellow ink.
-PANEL_TEXT_ATTR           equ 71 ; Bright white ink.
 PANEL_ENERGY_FULL_ATTR    equ 68 ; Bright green ink.
 PANEL_ENERGY_HALF_ATTR    equ 70 ; Bright yellow ink.
 PANEL_ENERGY_LOW_ATTR     equ 66 ; Bright red ink.
@@ -456,6 +477,34 @@ _GP_BarCell:
 
 _GP_BarColor:
         defb  0
+
+; Actual step of the beat of the hearts, her time and her image.
+_GP_HeartStep:
+        defb  255
+
+_GP_HeartTimer:
+        defb  1
+
+_GP_HeartImage:
+        defw  SpriteDataHeart
+
+;-------------------------------------------------------------------------------
+; The beat of the hearts. Every step: image of the heart and how many frames she
+; is showed. Two fast hits and a long rest, like a live heart.
+_GP_HeartBeat:
+        defw  SpriteDataHeart      ; The heart is resting.
+        defb  55
+        defw  SpriteDataHeartBig   ; The first hit.
+        defb  6
+        defw  SpriteDataHeartSmall
+        defb  5
+        defw  SpriteDataHeartBig   ; The second hit.
+        defb  6
+        defw  SpriteDataHeart
+        defb  8
+_GP_HeartBeatEnd:
+
+PANEL_HEART_BEAT_STEPS equ (_GP_HeartBeatEnd-_GP_HeartBeat)/3
 
 ;-------------------------------------------------------------------------------
 ; Graphics of the panel.
@@ -481,13 +530,6 @@ GfxEnergyEmpty:
         defb  %00000000
 
 ;-------------------------------------------------------------------------------
-; Texts of the panel.
-_GP_TitleText:
-        defb  " DILLEN ", 0
-
-_GP_EnergyText:
-        defb  "ENERGY", 0
-
 ; Description of every room, the index is the room's ID number.
 _GP_RoomTexts:
         defw  _GP_Room000

@@ -318,6 +318,26 @@ SpriteDataHeart:
 
 SpriteAttributesHeart:
         defb    2
+
+; The heart in the two other moments of her beat. The lives in the panel are
+; beating with the three images like a live heart.
+SpriteHeartBig:
+        defb    1,8
+
+SpriteDataHeartBig:
+        defb    102, 255, 191, 159, 94, 44, 24, 0
+
+SpriteAttributesHeartBig:
+        defb    2
+
+SpriteHeartSmall:
+        defb    1,8
+
+SpriteDataHeartSmall:
+        defb    0, 54, 126, 94, 44, 24, 0, 0
+
+SpriteAttributesHeartSmall:
+        defb    2
 ; END
 ;-------------------------------------------------------------------------------
 

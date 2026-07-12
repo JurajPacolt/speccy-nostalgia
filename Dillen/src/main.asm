@@ -19,6 +19,7 @@
 
 ; INCLUDES
         include "common.asm" ; Common procedures.
+        include "font_4x8.asm" ; Font 4x8 and her printing.
         include "kempston_joystick.asm"
         include "keyboard.asm"
         include "rolling.asm"
@@ -28,13 +29,10 @@
         include "game.asm" ; Here is main game loop.
         include "game_field.asm" ; Game border graphics.
         include "game_info_panel.asm" ; Info panel for game.
+        include "game_panel_picture.asm" ; Picture of the info panel.
         include "torches_in_rooms.asm" ; Torches with the fire in the rooms.
         include "stars_on_background.asm" ; Stars on background.
         include "animations_in_rooms.asm" ; Individual animations in rooms.
-
-; BINARY DATA
-@MainFontData:
-        incbin "..\gfx\std8x8.chr"
 
 ; COMPILER OUTPUT
         savesna "Dillen.sna", @EntryPoint
