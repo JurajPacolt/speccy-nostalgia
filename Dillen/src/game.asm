@@ -30,6 +30,7 @@ ResetGame:
         call  ResetGamePanel
         call  ResetTorches
         call  ResetStars
+        call  ResetWind
         ret
 ; END - ResetGame
 ;-------------------------------------------------------------------------------
