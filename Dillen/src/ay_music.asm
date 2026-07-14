@@ -2,13 +2,25 @@
 ;##### AY background music and IM2 player. #####################################
 ;###############################################################################
 
-; The tune runs at 125 BPM on a 50 Hz PAL machine. One pattern has 16 steps,
-; every step takes 6 frames. The 32-pattern order therefore loops after
-; 32*16*6/50 = 61.44 seconds.
+; The tune runs at 150 BPM on a 50 Hz PAL machine. One step takes 5 frames and
+; equals a sixteenth note, one pattern of 16 steps equals one bar. The 32-bar
+; song therefore loops after 32*16*5/50 = 51.2 seconds.
+;
+; The song is a brisk country two-step in C major with an AABA shape:
+;   bars  1..8   A  section, ends on the dominant then on the tonic
+;   bars  9..16  A  section again, closed with a run that opens the bridge
+;   bars 17..24  B  section in A minor, the contrasting middle
+;   bars 25..32  A  section once more, which is also the loop point
+; The melody of the A section is built from a single syncopated motif (a dotted
+; C5-B4 followed by A4-G4), so the ear recognizes it every time it returns.
+;
+; Four things carry the drive: the melody is accented off the beat, plucked notes
+; decay and then pick up a vibrato and a tremolo, the bass is a hardware envelope
+; buzz, and the chord channel chops on the second eighth of each beat.
 
 AY_REGISTER_PORT       equ 65533 ; 0xFFFD
 AY_DATA_PORT           equ 49149 ; 0xBFFD
-AY_FRAMES_PER_STEP     equ 6
+AY_FRAMES_PER_STEP     equ 5
 AY_STEPS_PER_PATTERN   equ 16
 AY_ORDER_LENGTH        equ 32
 AY_CHORD_MINOR         equ 128
@@ -70,6 +82,22 @@ N_A5   equ 46
 N_AS5  equ 47
 N_B5   equ 48
 
+; A step holding this value keeps the previous note ringing instead of playing a
+; new one. Longer note values are written as a note followed by N_HOLD steps.
+N_HOLD equ 127
+
+; Added to a melody note it plays that note louder. The accents are what make
+; the line snap.
+AY_ACCENT equ 128
+
+; A repeating sawtooth. Run at the pitch of the bass note it turns channel B into
+; the classic AY buzz bass instead of a plain square wave.
+AY_ENVELOPE_SAW        equ 8
+AY_ENVELOPE_VOLUME     equ 16 ; Channel volume bit that hands the level over to it.
+
+; Frames a melody note has to ring before the vibrato and the tremolo set in.
+AY_SHIMMER_DELAY       equ 8
+
 ;-------------------------------------------------------------------------------
 ; InitAYMusicIM2 - initialize AY and switch the game to the music IM2 handler.
 ; EntryPoint already disabled interrupts before this routine is called.
@@ -89,10 +117,17 @@ AYMusicInit:
         ld    (AYMusicStepIndex),a
         ld    (AYMusicArpeggioPhase),a
         ld    (AYMusicMelodyNote),a
+        ld    (AYMusicMelodyAccent),a
+        ld    (AYMusicMelodyAge),a
+        ld    (AYMusicMelodyTie),a
         ld    (AYMusicBassNote),a
+        ld    (AYMusicBassAge),a
         ld    (AYMusicChord),a
         ld    (AYMusicDrumType),a
         ld    (AYMusicDrumTimer),a
+
+        ld    a,4
+        ld    (AYMusicChordVolume),a
 
         ld    a,1 ; The first interrupt immediately loads step zero.
         ld    (AYMusicStepTimer),a
@@ -104,6 +139,9 @@ AYMusicInit:
         ld    a,9
         call  AYMusicWriteRegister
         ld    a,10
+        call  AYMusicWriteRegister
+        ld    e,AY_ENVELOPE_SAW ; The buzz shape the bass runs on.
+        ld    a,13
         call  AYMusicWriteRegister
         ld    e,56 ; Tone A/B/C on, noise A/B/C off.
         ld    a,7
@@ -128,7 +166,25 @@ AYMusicTick:
 
 .Render:
         call  AYMusicRenderMelodyAndBass
-        jp    AYMusicRenderChordOrDrum
+        call  AYMusicRenderChordOrDrum
+        jp    AYMusicAgeNotes
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; Count the frames a note has been ringing; the renderers turn that into a decay.
+AYMusicAgeNotes:
+        ld    hl,AYMusicMelodyAge
+        ld    a,(hl)
+        cp    60 ; Saturate, no note is ever that long.
+        jr    nc,.Bass
+        inc   (hl)
+.Bass:
+        ld    hl,AYMusicBassAge
+        ld    a,(hl)
+        cp    60
+        ret   nc
+        inc   (hl)
+        ret
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
@@ -159,15 +215,54 @@ AYMusicLoadStep:
         add   hl,de
 
         ld    a,(hl)
+        cp    N_HOLD
+        jr    z,.MelodyHeld ; A held step keeps the note that is already playing.
+        ld    c,a
+        and   127
         ld    (AYMusicMelodyNote),a
+        ld    a,c
+        and   AY_ACCENT
+        ld    (AYMusicMelodyAccent),a
+        xor   a
+        ld    (AYMusicMelodyAge),a ; A new note starts at full volume.
+.MelodyHeld:
         inc   hl
         ld    a,(hl)
+        cp    N_HOLD
+        jr    z,.BassHeld
         ld    (AYMusicBassNote),a
+        xor   a
+        ld    (AYMusicBassAge),a
+.BassHeld:
         inc   hl
         ld    a,(hl)
         ld    (AYMusicChord),a
         xor   a
         ld    (AYMusicArpeggioPhase),a ; Start every picking figure on its root.
+
+        ; The accompaniment chops: quiet on the beat, loud on the second eighth.
+        ld    a,(AYMusicStepIndex)
+        and   2
+        ld    a,4
+        jr    z,.ChordVolumeReady
+        ld    a,8
+.ChordVolumeReady:
+        ld    (AYMusicChordVolume),a
+
+        ; Peek at the melody of the next step so a note that is held over is not
+        ; re-articulated by the short release at the end of the current step.
+        inc   hl ; HL = melody byte of the next step.
+        ld    d,0
+        ld    a,(AYMusicStepIndex)
+        cp    AY_STEPS_PER_PATTERN-1
+        jr    z,.TieReady ; Notes never hold across a bar line.
+        ld    a,(hl)
+        cp    N_HOLD
+        jr    nz,.TieReady
+        inc   d
+.TieReady:
+        ld    a,d
+        ld    (AYMusicMelodyTie),a
 
         call  AYMusicLoadRhythm
 
@@ -263,38 +358,179 @@ AYMusicLoadRhythm:
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
+; The melody is plucked: loud at the attack, decaying with the note age, and once
+; it has been ringing for a while it starts to shimmer with vibrato and tremolo.
+; The bass is a buzz: channel B hands its level to the hardware envelope.
 AYMusicRenderMelodyAndBass:
         ld    a,(AYMusicMelodyNote)
-        push  af
-        call  AYMusicWriteToneA
-        pop   af
-        ld    e,0
+        call  AYMusicNotePeriod
+        ld    a,h
+        or    l
+        jr    z,.WriteMelodyTone
+        call  AYMusicApplyVibrato
+.WriteMelodyTone:
+        ld    e,l
+        xor   a
+        call  AYMusicWriteRegister
+        ld    e,h
+        ld    a,1
+        call  AYMusicWriteRegister
+
+        ld    a,(AYMusicMelodyNote)
         or    a
-        jr    z,.MelodyVolume
-        ld    e,12
+        jr    z,.MelodySilent
+
+        ld    a,(AYMusicMelodyAge)
+        srl   a
+        ld    c,a
+        ld    a,(AYMusicMelodyAccent)
+        or    a
+        ld    a,13
+        jr    z,.MelodyDecay
+        ld    a,15 ; An accented note snaps out above the rest.
+.MelodyDecay:
+        sub   c
+        jr    c,.MelodySustain
+        cp    9
+        jr    nc,.MelodyDecayed
+.MelodySustain:
+        ld    a,9
+.MelodyDecayed:
+        ld    e,a
+
+        ld    a,(AYMusicMelodyAge)
+        cp    AY_SHIMMER_DELAY
+        jr    c,.MelodyRelease
+        and   4 ; Tremolo: the level flutters four frames on, four frames off.
+        jr    z,.MelodyRelease
+        dec   e
+
+.MelodyRelease:
         ld    a,(AYMusicStepTimer)
         cp    1
         jr    nz,.MelodyVolume
-        ld    e,6 ; A short release keeps consecutive notes crisp.
+        ld    a,(AYMusicMelodyTie)
+        or    a
+        jr    nz,.MelodyVolume ; A held note rings on without a gap.
+        ld    e,4 ; A short release articulates the note that follows.
+        jr    .MelodyVolume
+
+.MelodySilent:
+        ld    e,0
 .MelodyVolume:
         ld    a,8
         call  AYMusicWriteRegister
 
         ld    a,(AYMusicBassNote)
-        push  af
-        call  AYMusicWriteToneB
-        pop   af
-        ld    e,0
         or    a
-        jr    z,.BassVolume
-        ld    e,9
-        ld    a,(AYMusicStepTimer)
-        cp    1
-        jr    nz,.BassVolume
-        ld    e,4
-.BassVolume:
+        jr    z,.BassSilent
+        call  AYMusicNotePeriod
+        push  hl
+        ld    e,l
+        ld    a,2
+        call  AYMusicWriteRegister
+        ld    e,h
+        ld    a,3
+        call  AYMusicWriteRegister
+        pop   hl
+
+        ; The envelope runs one full sawtooth per wave of the note, so it buzzes
+        ; at the pitch of the bass: its period is the tone period divided by 16.
+        srl   h
+        rr    l
+        srl   h
+        rr    l
+        srl   h
+        rr    l
+        srl   h
+        rr    l
+        ld    e,l
+        ld    a,11
+        call  AYMusicWriteRegister
+        ld    e,h
+        ld    a,12
+        call  AYMusicWriteRegister
+
+        ld    a,(AYMusicBassAge)
+        or    a
+        jr    nz,.BassBuzzing
+        ld    e,AY_ENVELOPE_SAW ; Restart the sawtooth, but only on the attack.
+        ld    a,13
+        call  AYMusicWriteRegister
+.BassBuzzing:
+        ld    e,AY_ENVELOPE_VOLUME
         ld    a,9
         jp    AYMusicWriteRegister
+
+.BassSilent:
+        ld    hl,0
+        ld    e,l
+        ld    a,2
+        call  AYMusicWriteRegister
+        ld    e,h
+        ld    a,3
+        call  AYMusicWriteRegister
+        ld    e,0
+        ld    a,9
+        jp    AYMusicWriteRegister
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; HL = tone period of the melody. Detunes it by one vibrato unit, a 64th of the
+; period, following a slow triangle. The attack of the note is left clean.
+AYMusicApplyVibrato:
+        ld    a,(AYMusicMelodyAge)
+        cp    AY_SHIMMER_DELAY
+        ret   c
+        srl   a ; One LFO step every two frames: a full sweep takes 16 frames.
+        and   7
+        ld    e,a
+        ld    d,0
+        push  hl
+        ld    hl,AYMusicVibrato
+        add   hl,de
+        ld    a,(hl)
+        pop   hl
+        or    a
+        ret   z
+        ld    b,a ; B = signed LFO step.
+
+        ld    a,l ; C = period / 64.
+        rlca
+        rlca
+        and   3
+        ld    c,a
+        ld    a,h
+        add   a,a
+        add   a,a
+        add   a,c
+        ld    c,a
+        or    a
+        ret   z ; Too high a note to detune by a whole period unit.
+
+        ld    a,b
+        or    a
+        jp    p,.Sharp
+        neg
+        ld    b,a
+.Flat:
+        ld    a,l
+        sub   c
+        ld    l,a
+        ld    a,h
+        sbc   a,0
+        ld    h,a
+        djnz  .Flat
+        ret
+.Sharp:
+        ld    a,l
+        add   a,c
+        ld    l,a
+        ld    a,h
+        adc   a,0
+        ld    h,a
+        djnz  .Sharp
+        ret
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
@@ -330,11 +566,11 @@ AYMusicRenderKick:
         ld    e,24 ; Tone and noise C on; noise A/B off.
         ld    a,7
         call  AYMusicWriteRegister
-        ld    e,13
+        ld    e,14
         ld    a,(AYMusicDrumTimer)
         cp    2
         jr    z,.VolumeReady
-        ld    e,9
+        ld    e,10
 .VolumeReady:
         ld    a,10
         call  AYMusicWriteRegister
@@ -352,7 +588,8 @@ AYMusicRenderSnare:
         ld    a,(AYMusicDrumTimer)
         add   a,a
         add   a,a
-        ld    e,a ; Volumes 12, 8, 4.
+        add   a,2
+        ld    e,a ; Volumes 14, 10, 6.
         ld    a,10
         call  AYMusicWriteRegister
         jp    AYMusicDecreaseDrumTimer
@@ -366,7 +603,7 @@ AYMusicRenderHat:
         ld    e,28
         ld    a,7
         call  AYMusicWriteRegister
-        ld    e,6
+        ld    e,7
         ld    a,10
         call  AYMusicWriteRegister
         jp    AYMusicDecreaseDrumTimer
@@ -382,7 +619,7 @@ AYMusicRenderOpenHat:
         call  AYMusicWriteRegister
         ld    a,(AYMusicDrumTimer)
         add   a,a
-        add   a,2 ; Volumes 8, 6, 4.
+        add   a,3 ; Volumes 9, 7, 5.
         ld    e,a
         ld    a,10
         call  AYMusicWriteRegister
@@ -401,11 +638,11 @@ AYMusicRenderTom:
         ld    e,56 ; Pitched tom, without noise.
         ld    a,7
         call  AYMusicWriteRegister
-        ld    e,11
+        ld    e,12
         ld    a,(AYMusicDrumTimer)
         cp    2
         jr    z,.VolumeReady
-        ld    e,7
+        ld    e,8
 .VolumeReady:
         ld    a,10
         call  AYMusicWriteRegister
@@ -462,7 +699,8 @@ AYMusicRenderChord:
         ld    e,0
         or    a
         jr    z,.ChordVolume
-        ld    e,7
+        ld    a,(AYMusicChordVolume) ; Chops off the beat, stays under the melody.
+        ld    e,a
 .ChordVolume:
         ld    a,10
         call  AYMusicWriteRegister
@@ -481,24 +719,6 @@ AYMusicRenderChord:
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
-AYMusicWriteToneA:
-        call  AYMusicNotePeriod
-        ld    e,l
-        xor   a
-        call  AYMusicWriteRegister
-        ld    e,h
-        ld    a,1
-        jp    AYMusicWriteRegister
-
-AYMusicWriteToneB:
-        call  AYMusicNotePeriod
-        ld    e,l
-        ld    a,2
-        call  AYMusicWriteRegister
-        ld    e,h
-        ld    a,3
-        jp    AYMusicWriteRegister
-
 AYMusicWriteToneC:
         call  AYMusicNotePeriod
 AYMusicWriteToneCPeriod:
@@ -556,14 +776,29 @@ AYMusicArpeggioPhase:
         defb  0
 AYMusicMelodyNote:
         defb  0
+AYMusicMelodyAccent:
+        defb  0
+AYMusicMelodyAge:
+        defb  0
+AYMusicMelodyTie:
+        defb  0
 AYMusicBassNote:
+        defb  0
+AYMusicBassAge:
         defb  0
 AYMusicChord:
         defb  0
+AYMusicChordVolume:
+        defb  4
 AYMusicDrumType:
         defb  0
 AYMusicDrumTimer:
         defb  0
+;-------------------------------------------------------------------------------
+
+; One slow triangle sweep of the melody vibrato, in vibrato units.
+AYMusicVibrato:
+        defb  0,1,1,0,0,-1,-1,0
 ;-------------------------------------------------------------------------------
 
 ; AY periods for C2..B5 at the 1.7734 MHz ZX Spectrum AY clock.
@@ -573,43 +808,46 @@ AYMusicNotePeriods:
         defw  424,400,377,356,336,317,300,283,267,252,238,224
         defw  212,200,189,178,168,159,150,141,133,126,119,112
 
-; Thirty-two pattern positions = 61.44 seconds.
+; Thirty-two bars = 51.2 seconds. A A B A, where the second A closes with the
+; run that leads into the bridge.
 AYMusicOrder:
-        defb  0,1,2,3, 0,1,2,3
-        defb  4,5,4,6, 4,5,7,6
-        defb  0,1,2,3, 4,5,4,6
-        defb  7,5,2,3, 4,5,7,6
+        defb  0,1,2,3,   0,4,5,6
+        defb  0,1,2,3,   0,4,5,7
+        defb  8,9,10,11, 8,9,10,11
+        defb  0,1,2,3,   0,4,5,6
 
-; A separate rhythm order lets repeated melodies return with a different feel.
+; A separate rhythm order lets the repeated melody return with a different feel:
+; the two-step opens, the train beat drives the repeat, the bridge is syncopated
+; and every eight-bar phrase ends with a fill.
 AYMusicRhythmOrder:
-        defb  0,0,1,4, 0,2,1,4
-        defb  1,2,1,3, 2,1,4,3
-        defb  0,2,1,4, 1,2,3,4
-        defb  3,1,2,4, 1,2,5,4
+        defb  0,0,2,0, 0,0,2,4
+        defb  1,1,2,1, 1,1,2,4
+        defb  2,2,1,2, 2,2,1,4
+        defb  1,0,2,1, 1,2,1,5
 
 AYMusicRhythmTable:
         defw  AYMusicRhythm0,AYMusicRhythm1,AYMusicRhythm2
         defw  AYMusicRhythm3,AYMusicRhythm4,AYMusicRhythm5
 
-; 0: classic country boom-chicka.
+; 0: driving two-step with a kick pushed onto the "and" of two.
 AYMusicRhythm0:
         defb  AY_DRUM_KICK,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_NONE
-        defb  AY_DRUM_SNARE,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_NONE
+        defb  AY_DRUM_SNARE,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_KICK
         defb  AY_DRUM_KICK,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_NONE
-        defb  AY_DRUM_SNARE,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_NONE
+        defb  AY_DRUM_SNARE,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_HAT
 
-; 1: busy train beat.
+; 1: train beat, hats on every sixteenth.
 AYMusicRhythm1:
         defb  AY_DRUM_KICK,AY_DRUM_HAT,AY_DRUM_HAT,AY_DRUM_HAT
         defb  AY_DRUM_SNARE,AY_DRUM_HAT,AY_DRUM_HAT,AY_DRUM_HAT
         defb  AY_DRUM_KICK,AY_DRUM_HAT,AY_DRUM_HAT,AY_DRUM_HAT
-        defb  AY_DRUM_SNARE,AY_DRUM_HAT,AY_DRUM_HAT,AY_DRUM_HAT
+        defb  AY_DRUM_SNARE,AY_DRUM_HAT,AY_DRUM_HAT,AY_DRUM_SNARE
 
-; 2: syncopated verse groove.
+; 2: syncopated groove, the kicks fall between the beats.
 AYMusicRhythm2:
         defb  AY_DRUM_KICK,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_KICK
-        defb  AY_DRUM_SNARE,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_NONE
-        defb  AY_DRUM_KICK,AY_DRUM_HAT,AY_DRUM_NONE,AY_DRUM_HAT
+        defb  AY_DRUM_SNARE,AY_DRUM_HAT,AY_DRUM_HAT,AY_DRUM_NONE
+        defb  AY_DRUM_KICK,AY_DRUM_HAT,AY_DRUM_NONE,AY_DRUM_KICK
         defb  AY_DRUM_SNARE,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_HAT
 
 ; 3: sparse breakdown with an open hat.
@@ -617,7 +855,7 @@ AYMusicRhythm3:
         defb  AY_DRUM_KICK,AY_DRUM_NONE,AY_DRUM_NONE,AY_DRUM_HAT
         defb  AY_DRUM_SNARE,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_NONE
         defb  AY_DRUM_KICK,AY_DRUM_NONE,AY_DRUM_OPEN_HAT,AY_DRUM_NONE
-        defb  AY_DRUM_SNARE,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_NONE
+        defb  AY_DRUM_SNARE,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_KICK
 
 ; 4: end-of-phrase tom and snare fill.
 AYMusicRhythm4:
@@ -636,151 +874,242 @@ AYMusicRhythm5:
 AYMusicPatternTable:
         defw  AYMusicPattern0,AYMusicPattern1,AYMusicPattern2,AYMusicPattern3
         defw  AYMusicPattern4,AYMusicPattern5,AYMusicPattern6,AYMusicPattern7
+        defw  AYMusicPattern8,AYMusicPattern9,AYMusicPattern10,AYMusicPattern11
 
-; Every step: melody note, bass note, chord root/type.
+; Every step: melody note, bass note, chord root/type. The bass plays the country
+; root-fifth "boom" on the four beats and walks into the next chord on the last
+; eighth of the bar; the melody moves in dotted eighths, eighths and sixteenths.
+
+; 0: A section, bars 1 and 5 over C. The motif: a dotted C5 tipped by B4, then a
+; falling A4-G4. Everything else in the A section answers this bar.
 AYMusicPattern0:
-        defb  N_E4,N_C2,N_C3
-        defb  N_REST,N_REST,N_C3
-        defb  N_G4,N_G2,N_C3
-        defb  N_REST,N_REST,N_C3
-        defb  N_A4,N_F2,N_F3
-        defb  N_G4,N_REST,N_F3
-        defb  N_E4,N_C3,N_F3
-        defb  N_REST,N_REST,N_F3
-        defb  N_F4,N_C2,N_C3
-        defb  N_REST,N_REST,N_C3
-        defb  N_E4,N_G2,N_C3
-        defb  N_D4,N_REST,N_C3
-        defb  N_G4,N_G2,N_G3
-        defb  N_REST,N_REST,N_G3
-        defb  N_D4,N_D3,N_G3
-        defb  N_REST,N_REST,N_G3
+        defb  N_C5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_B4,          N_REST,N_C3
+        defb  N_A4+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_G4,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_A4+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_G4,          N_REST,N_C3
+        defb  N_E4+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_G4,          N_E2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
 
+; 1: A section, bar 2 over F. The same rhythm, answered a step lower.
 AYMusicPattern1:
-        defb  N_C5,N_C2,N_C3
-        defb  N_B4,N_REST,N_C3
-        defb  N_G4,N_G2,N_C3
-        defb  N_E4,N_REST,N_C3
-        defb  N_F4,N_F2,N_F3
-        defb  N_REST,N_REST,N_F3
-        defb  N_A4,N_C3,N_F3
-        defb  N_REST,N_REST,N_F3
-        defb  N_G4,N_G2,N_G3
-        defb  N_E4,N_REST,N_G3
-        defb  N_D4,N_D3,N_G3
-        defb  N_REST,N_REST,N_G3
-        defb  N_E4,N_C2,N_C3
-        defb  N_REST,N_REST,N_C3
-        defb  N_C4,N_G2,N_C3
-        defb  N_REST,N_REST,N_C3
+        defb  N_A4+AY_ACCENT,N_F2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_HOLD,        N_REST,N_F3
+        defb  N_G4,          N_REST,N_F3
+        defb  N_F4+AY_ACCENT,N_C3,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_A4,          N_REST,N_F3
+        defb  N_HOLD,        N_REST,N_F3
+        defb  N_C5+AY_ACCENT,N_F2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_HOLD,        N_REST,N_F3
+        defb  N_A4,          N_REST,N_F3
+        defb  N_G4+AY_ACCENT,N_C3,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_F4,          N_D2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
 
+; 2: A section, bar 3 over C. The motif again, an octave of energy higher.
 AYMusicPattern2:
-        defb  N_G4,N_C2,N_C3
-        defb  N_A4,N_REST,N_C3
-        defb  N_C5,N_G2,N_C3
-        defb  N_REST,N_REST,N_C3
-        defb  N_A4,N_F2,N_F3
-        defb  N_G4,N_REST,N_F3
-        defb  N_F4,N_C3,N_F3
-        defb  N_REST,N_REST,N_F3
-        defb  N_E4,N_C2,N_C3
-        defb  N_G4,N_REST,N_C3
-        defb  N_A4,N_G2,N_C3
-        defb  N_C5,N_REST,N_C3
-        defb  N_B4,N_G2,N_G3
-        defb  N_A4,N_REST,N_G3
-        defb  N_G4,N_D3,N_G3
-        defb  N_REST,N_REST,N_G3
+        defb  N_E5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_D5,          N_REST,N_C3
+        defb  N_C5+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_G4,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_C5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_D5,          N_REST,N_C3
+        defb  N_E5+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_C5,          N_A2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
 
+; 3: A section, bar 4 over G. Half cadence, the question stays open on D.
 AYMusicPattern3:
-        defb  N_F4,N_F2,N_F3
-        defb  N_A4,N_REST,N_F3
-        defb  N_C5,N_C3,N_F3
-        defb  N_A4,N_REST,N_F3
-        defb  N_G4,N_G2,N_G3
-        defb  N_B4,N_REST,N_G3
-        defb  N_D5,N_D3,N_G3
-        defb  N_B4,N_REST,N_G3
-        defb  N_C5,N_C2,N_C3
-        defb  N_C5,N_REST,N_C3
-        defb  N_G4,N_G2,N_C3
-        defb  N_E4,N_REST,N_C3
-        defb  N_D4,N_G2,N_G3
-        defb  N_G4,N_A2,N_G3
-        defb  N_B4,N_B2,N_G3
-        defb  N_C5,N_C3,N_G3
+        defb  N_D5+AY_ACCENT,N_G2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_HOLD,        N_REST,N_G3
+        defb  N_C5,          N_REST,N_G3
+        defb  N_B4+AY_ACCENT,N_D3,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_G4,          N_REST,N_G3
+        defb  N_HOLD,        N_REST,N_G3
+        defb  N_A4+AY_ACCENT,N_G2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_B4,          N_REST,N_G3
+        defb  N_HOLD,        N_REST,N_G3
+        defb  N_D5+AY_ACCENT,N_D3,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_HOLD,        N_B2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
 
+; 4: A section, bar 6 over F. Climbs to F5 and rolls back down.
 AYMusicPattern4:
-        defb  N_C5,N_C2,N_C3
-        defb  N_C5,N_REST,N_C3
-        defb  N_E5,N_G2,N_C3
-        defb  N_G5,N_REST,N_C3
-        defb  N_E5,N_G2,N_G3
-        defb  N_D5,N_REST,N_G3
-        defb  N_C5,N_D3,N_G3
-        defb  N_REST,N_REST,N_G3
-        defb  N_D5,N_C2,N_C3
-        defb  N_E5,N_REST,N_C3
-        defb  N_G5,N_G2,N_C3
-        defb  N_E5,N_REST,N_C3
-        defb  N_E5,N_F2,N_F3
-        defb  N_D5,N_REST,N_F3
-        defb  N_C5,N_C3,N_F3
-        defb  N_REST,N_REST,N_F3
+        defb  N_A4+AY_ACCENT,N_F2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_C5,          N_REST,N_F3
+        defb  N_HOLD,        N_REST,N_F3
+        defb  N_A4+AY_ACCENT,N_C3,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_C5,          N_REST,N_F3
+        defb  N_HOLD,        N_REST,N_F3
+        defb  N_F5+AY_ACCENT,N_F2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_E5,          N_REST,N_F3
+        defb  N_HOLD,        N_REST,N_F3
+        defb  N_D5+AY_ACCENT,N_C3,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_C5,          N_A2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
 
+; 5: A section, bar 7 over G. Pushes forward onto the leading tone B.
 AYMusicPattern5:
-        defb  N_F5,N_F2,N_F3
-        defb  N_E5,N_REST,N_F3
-        defb  N_D5,N_C3,N_F3
-        defb  N_C5,N_REST,N_F3
-        defb  N_G4,N_C2,N_C3
-        defb  N_C5,N_REST,N_C3
-        defb  N_E5,N_G2,N_C3
-        defb  N_G5,N_REST,N_C3
-        defb  N_A4,N_D2,N_D3
-        defb  N_D5,N_REST,N_D3
-        defb  N_FS5,N_A2,N_D3
-        defb  N_A5,N_REST,N_D3
-        defb  N_G5,N_G2,N_G3
-        defb  N_F5,N_REST,N_G3
-        defb  N_D5,N_D3,N_G3
-        defb  N_REST,N_REST,N_G3
+        defb  N_D5+AY_ACCENT,N_G2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_B4,          N_REST,N_G3
+        defb  N_HOLD,        N_REST,N_G3
+        defb  N_G4+AY_ACCENT,N_D3,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_B4,          N_REST,N_G3
+        defb  N_HOLD,        N_REST,N_G3
+        defb  N_D5+AY_ACCENT,N_G2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_E5,          N_REST,N_G3
+        defb  N_HOLD,        N_REST,N_G3
+        defb  N_D5+AY_ACCENT,N_D3,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_B4,          N_B2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
 
+; 6: A section, bar 8 over C. Full cadence, capped by a bright G5.
 AYMusicPattern6:
-        defb  N_E5,N_C2,N_C3
-        defb  N_D5,N_REST,N_C3
-        defb  N_C5,N_G2,N_C3
-        defb  N_E5,N_REST,N_C3
-        defb  N_A4,N_C2,N_C3
-        defb  N_C5,N_REST,N_C3
-        defb  N_E5,N_G2,N_C3
-        defb  N_G5,N_REST,N_C3
-        defb  N_F5,N_F2,N_F3
-        defb  N_E5,N_REST,N_F3
-        defb  N_D5,N_C3,N_F3
-        defb  N_C5,N_REST,N_F3
-        defb  N_B4,N_G2,N_G3
-        defb  N_D5,N_A2,N_G3
-        defb  N_G5,N_B2,N_G3
-        defb  N_C5,N_C3,N_G3
+        defb  N_C5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_B4,          N_REST,N_C3
+        defb  N_C5+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_E5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_G5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_E5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_C5+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_HOLD,        N_B2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
 
+; 7: A section, bar 16 over C. Ends with a sixteenth run that falls into the
+; bridge.
 AYMusicPattern7:
-        defb  N_A4,N_A2,N_A3
-        defb  N_CS5,N_REST,N_A3
-        defb  N_E5,N_E3,N_A3
-        defb  N_A5,N_REST,N_A3
-        defb  N_GS5,N_E2,N_E3
-        defb  N_E5,N_REST,N_E3
-        defb  N_B4,N_B2,N_E3
-        defb  N_GS5,N_REST,N_E3
-        defb  N_A4,N_F2,N_F3
-        defb  N_C5,N_REST,N_F3
-        defb  N_F5,N_C3,N_F3
-        defb  N_A5,N_REST,N_F3
-        defb  N_G5,N_G2,N_G3
-        defb  N_D5,N_REST,N_G3
-        defb  N_B4,N_D3,N_G3
-        defb  N_G4,N_REST,N_G3
+        defb  N_C5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_B4,          N_REST,N_C3
+        defb  N_C5+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_E5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_G5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_E5+AY_ACCENT,N_G2,  N_C3
+        defb  N_D5,          N_HOLD,N_C3
+        defb  N_C5,          N_G2,  N_C3
+        defb  N_B4,          N_HOLD,N_C3
+
+; 8: bridge, bar 1 over A minor. The same shape as the motif, but darker and
+; running up the whole chord.
+AYMusicPattern8:
+        defb  N_A4+AY_ACCENT,N_A2,  N_A3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_HOLD,N_A3+AY_CHORD_MINOR
+        defb  N_C5,          N_REST,N_A3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_REST,N_A3+AY_CHORD_MINOR
+        defb  N_E5+AY_ACCENT,N_E3,  N_A3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_HOLD,N_A3+AY_CHORD_MINOR
+        defb  N_A5,          N_REST,N_A3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_REST,N_A3+AY_CHORD_MINOR
+        defb  N_G5+AY_ACCENT,N_A2,  N_A3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_HOLD,N_A3+AY_CHORD_MINOR
+        defb  N_E5,          N_REST,N_A3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_REST,N_A3+AY_CHORD_MINOR
+        defb  N_C5+AY_ACCENT,N_E3,  N_A3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_HOLD,N_A3+AY_CHORD_MINOR
+        defb  N_E5,          N_G2,  N_A3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_HOLD,N_A3+AY_CHORD_MINOR
+
+; 9: bridge, bar 2 over F. The highest point of the whole song.
+AYMusicPattern9:
+        defb  N_A4+AY_ACCENT,N_F2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_C5,          N_REST,N_F3
+        defb  N_HOLD,        N_REST,N_F3
+        defb  N_F5+AY_ACCENT,N_C3,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_A5,          N_REST,N_F3
+        defb  N_HOLD,        N_REST,N_F3
+        defb  N_G5+AY_ACCENT,N_F2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_F5,          N_REST,N_F3
+        defb  N_HOLD,        N_REST,N_F3
+        defb  N_E5+AY_ACCENT,N_C3,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_C5,          N_D2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+
+; 10: bridge, bar 3 over C.
+AYMusicPattern10:
+        defb  N_G4+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_C5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_E5+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_G5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_E5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_C5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_G4+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_B4,          N_A2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+
+; 11: bridge, bar 4 over G. Ends on B, which pulls the music back to the A part.
+AYMusicPattern11:
+        defb  N_D5+AY_ACCENT,N_G2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_B4,          N_REST,N_G3
+        defb  N_HOLD,        N_REST,N_G3
+        defb  N_D5+AY_ACCENT,N_D3,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_G5,          N_REST,N_G3
+        defb  N_HOLD,        N_REST,N_G3
+        defb  N_D5+AY_ACCENT,N_G2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_B4,          N_REST,N_G3
+        defb  N_HOLD,        N_REST,N_G3
+        defb  N_A4+AY_ACCENT,N_D3,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_B4,          N_B2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
 
 ;-------------------------------------------------------------------------------
 ; The vector table covers every possible byte supplied by the floating bus.
