@@ -9,6 +9,8 @@ GameMainLoop:
         call  ItemsInRooms ; Static collectible items, before the stars are placed.
         call  StarOnBackground
         call  AnimationsInRooms
+        call  PlayerUpdate
+        call  PlayerRender
         call  ScanCursorKeysForRoomSwitch
         halt
         jr    .GameMainLoop
@@ -34,6 +36,7 @@ ResetGame:
         call  ResetStars
         call  ResetWind
         call  ResetDeath
+        call  PlayerReset
         ret
 ; END - ResetGame
 ;-------------------------------------------------------------------------------

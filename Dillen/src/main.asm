@@ -25,6 +25,7 @@
         include "rolling.asm"
         include "sprite_utils.asm"
         include "sprites_land.asm"
+        include "player.asm" ; Main character, controls and masked animation.
         include "rooms.asm" ; Showing rooms.
         include "items_in_rooms.asm" ; Collectible and usable items from the map.
         include "game.asm" ; Here is main game loop.

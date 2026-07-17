@@ -187,10 +187,10 @@ DownDE:
 
 ;-------------------------------------------------------------------------------
 ; BEGIN - AttrAddr
-; Address of the attribute.
-; B - Yos.
-; C - Xos.
-; return HL
+; Attribute of one character cell.
+; B - Yos in the character rows, not in the pixel lines.
+; C - Xos in the character columns, not in the pixel columns.
+; return A - the attribute byte, HL - its address.
 AttrAddr:
         ld    a,b
         rrca
@@ -239,6 +239,7 @@ AttrAddrViaPixelPos:
         rrca
         rrca
         rrca
+        and   %00011111 ; The low bits of Xos rotate up, they are not the column.
         ld    c,a
         ld    b,0
         add   hl,bc

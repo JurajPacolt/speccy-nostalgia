@@ -20,3 +20,14 @@ For editing use, for example (or vscode):
 2.	ATOM plugin "process-palette"
 3.	ATOM plugin "language-assembler-sjasmplus"
 4.	ATOM plugin "language-z80asm"
+
+## Player controls
+
+- `Z` / `X` (also `O` / `P`) or Kempston left / right: walk
+- `Space` or Kempston fire: jump; hold left or right at take-off to jump in that direction
+
+The 16x24 player animation and background masks are generated with:
+
+```powershell
+py -3 .\tools\generate_player_assets.py
+```
