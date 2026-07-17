@@ -3,13 +3,12 @@
 ;###############################################################################
 
 ; Public item IDs. They are the numbers written by the items in dillen-map.gif.
-ITEM_SHIELD    equ 1
-ITEM_WEAPON    equ 2
-ITEM_CROSS     equ 3
-ITEM_MATCH     equ 4
-ITEM_DYNAMITE  equ 5
-ITEM_KEY       equ 6
-ITEM_COUNT     equ 6
+ITEM_PICKAXE   equ 1
+ITEM_CROSS     equ 2
+ITEM_MATCH     equ 3
+ITEM_DYNAMITE  equ 4
+ITEM_KEY       equ 5
+ITEM_COUNT     equ 5
 
 ; A state normally contains the room ID in which the item is lying. These two
 ; values move the item out of all rooms without throwing its identity away.
@@ -189,29 +188,26 @@ _ItemsRefreshRoom:
 
 ;-------------------------------------------------------------------------------
 ; Item placement from dillen-map.gif, ordered by ITEM_* ID:
-; shield 7, weapon 2, cross 8, match 11, dynamite 5 and key 9.
+; pickaxe 2, cross 8, match 11, dynamite 5 and key 9.
 ItemInitialRooms:
-        defb  7, 2, 8, 11, 5, 9
+        defb  2, 8, 11, 5, 9
 
-; Room IDs containing the numbered use marks in the drawing. The shield is for
-; the falling-stone passage in room 10; the remaining marks are unambiguous.
+; Room IDs containing the numbered use marks in the drawing.
 ItemUseRooms:
-        defb  10, 1, 7, 6, 6, 6
+        defb  1, 7, 6, 6, 6
 
 ; X, Y, sprite. Positions follow the relative placement in the paper rooms and
-; avoid the already animated cells (notably the Death in room 7).
+; every 16x16 footprint stays in empty cells immediately above the terrain.
 ItemDrawRecords:
-        defb  5*8, 17*8
-        defw  SpriteItemShield
-        defb  22*8, 18*8
-        defw  SpriteItemWeapon
+        defb  25*8, 18*8
+        defw  SpriteItemPickaxe
         defb  14*8, 17*8
         defw  SpriteItemCross
         defb  24*8, 17*8
         defw  SpriteItemMatch
-        defb  22*8, 17*8
+        defb  16*8, 17*8
         defw  SpriteItemDynamite
-        defb  10*8, 18*8
+        defb  12*8, 18*8
         defw  SpriteItemKey
 
 ; Mutable item locations/states. ResetItems initializes this table.
@@ -224,157 +220,109 @@ _ItemsActualRoomId:
         defb  255
 
 ;-------------------------------------------------------------------------------
-; Spectrum sprites redrawn from real-object references. Larger objects use
-; 24 pixels where their identifying construction would disappear at 16x16.
-SpriteItemShield:
-        defb  3,24
-        defb  %00011111,%11111111,%11111000
-        defb  %00110000,%00000000,%00001100
-        defb  %01100000,%00000000,%00000110
-        defb  %11000000,%00011000,%00000011
-        defb  %11000000,%00111100,%00000011
-        defb  %11000000,%01111110,%00000011
-        defb  %11000000,%11111111,%00000011
-        defb  %01100001,%11111111,%10000110
-        defb  %01100011,%11111111,%11000110
-        defb  %01100001,%11111111,%10000110
-        defb  %01100000,%11111111,%00000110
-        defb  %00110000,%00111100,%00001100
-        defb  %00110000,%00011000,%00001100
-        defb  %00011000,%00000000,%00011000
-        defb  %00011000,%00000000,%00011000
-        defb  %00001100,%00000000,%00110000
-        defb  %00001100,%00000000,%00110000
-        defb  %00000110,%00000000,%01100000
-        defb  %00000110,%00000000,%01100000
-        defb  %00000011,%00000000,%11000000
-        defb  %00000001,%10000001,%10000000
-        defb  %00000000,%11000011,%00000000
-        defb  %00000000,%01100110,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  69,69,69,69,69,69,69,69,69
-
-SpriteItemWeapon:
-        defb  3,16
-        defb  %00000000,%00000000,%00110000
-        defb  %00000001,%11111111,%11111111
-        defb  %00011111,%11111111,%11111111
-        defb  %01111111,%11111111,%11111111
-        defb  %01111111,%00111111,%11111111
-        defb  %00001111,%11111111,%11100000
-        defb  %00001100,%00011111,%11100000
-        defb  %00011000,%00110000,%11000000
-        defb  %00011000,%00110001,%10000000
-        defb  %00110000,%01100011,%00000000
-        defb  %00110000,%01100110,%00000000
-        defb  %01100000,%11001100,%00000000
-        defb  %01100001,%10011000,%00000000
-        defb  %01100011,%00110000,%00000000
-        defb  %00111110,%01100000,%00000000
-        defb  %00011100,%00000000,%00000000
-        defb  71,71,71,6,6,71
+; Spectrum sprites use the same high-contrast, slightly rough silhouettes as
+; the cave scenery. Bright colors keep small items readable on black ground.
+SpriteItemPickaxe:
+        defb  2,16
+        defb  %00000011,%11000000
+        defb  %00011111,%11111000
+        defb  %01111101,%10111110
+        defb  %11100001,%10000111
+        defb  %10000001,%10000001
+        defb  %00000001,%11000000
+        defb  %00000001,%11000000
+        defb  %00000000,%11100000
+        defb  %00000000,%11100000
+        defb  %00000000,%01110000
+        defb  %00000000,%01110000
+        defb  %00000000,%00111000
+        defb  %00000000,%00111000
+        defb  %00000000,%00011100
+        defb  %00000000,%00011100
+        defb  %00000000,%00001110
+        ; Steel head arches up in the middle and curves both tips downward.
+        defb  71,71,70,70
 
 SpriteItemCross:
-        defb  3,24
-        defb  %00000000,%00011000,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%01111110,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %01111111,%11111111,%11111110
-        defb  %11111111,%11111111,%11111111
-        defb  %11100111,%11111111,%11100111
-        defb  %11111111,%11111111,%11111111
-        defb  %01111111,%11111111,%11111110
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%01111110,%00000000
-        defb  %00000000,%00111100,%00000000
-        defb  %00000000,%00011000,%00000000
-        defb  %00000000,%00000000,%00000000
-        defb  6,6,6,6,6,6,6,6,6
+        defb  2,16
+        defb  %00000011,%11000000
+        defb  %00000111,%11100000
+        defb  %00000011,%11000000
+        defb  %00000011,%11000000
+        defb  %01111111,%11111110
+        defb  %11111111,%11111111
+        defb  %01111011,%11011110
+        defb  %01111111,%11111110
+        defb  %00000011,%11000000
+        defb  %00000011,%11000000
+        defb  %00000011,%11000000
+        defb  %00000011,%11000000
+        defb  %00000011,%11000000
+        defb  %00000111,%11100000
+        defb  %00000011,%11000000
+        defb  %00000000,%00000000
+        defb  70,70,70,70
 
 SpriteItemMatch:
-        defb  2,24
-        defb  %00000000,%00001100
-        defb  %00000000,%00011110
-        defb  %00000000,%00111111
-        defb  %00000000,%00111111
-        defb  %00000000,%00011110
-        defb  %00000000,%00001100
-        defb  %00000000,%00011000
-        defb  %00000000,%00011000
+        defb  2,16
         defb  %00000000,%00110000
+        defb  %00000000,%01111000
+        defb  %00000000,%11111100
+        defb  %00000000,%01111000
         defb  %00000000,%00110000
         defb  %00000000,%01100000
-        defb  %00000000,%01100000
-        defb  %00000000,%11000000
         defb  %00000000,%11000000
         defb  %00000001,%10000000
-        defb  %00000001,%10000000
-        defb  %00000011,%00000000
         defb  %00000011,%00000000
         defb  %00000110,%00000000
-        defb  %00000110,%00000000
-        defb  %00001100,%00000000
         defb  %00001100,%00000000
         defb  %00011000,%00000000
-        defb  %00011000,%00000000
-        defb  70,66,70,70,70,70
+        defb  %00110000,%00000000
+        defb  %01100000,%00000000
+        defb  %11000000,%00000000
+        defb  %00000000,%00000000
+        ; Unlit red match head over its yellow wooden stem.
+        defb  70,66,70,70
 
 SpriteItemDynamite:
-        defb  3,24
-        defb  %00000000,%00000000,%01100000
-        defb  %00000000,%00000000,%11000000
-        defb  %00000000,%00000001,%10000000
-        defb  %00000000,%00000011,%00000000
-        defb  %00000000,%00000110,%00000000
-        defb  %00000000,%00001100,%00000000
-        defb  %00000000,%00011000,%00000000
-        defb  %00000000,%00110000,%00000000
-        defb  %00011100,%00111000,%01110000
-        defb  %00111110,%01111100,%11111000
-        defb  %00111110,%01111100,%11111000
-        defb  %00111110,%01111100,%11111000
-        defb  %00100000,%00000000,%00001000
-        defb  %00100000,%00000000,%00001000
-        defb  %00111110,%01111100,%11111000
-        defb  %00111110,%01111100,%11111000
-        defb  %00111110,%01111100,%11111000
-        defb  %00100000,%00000000,%00001000
-        defb  %00100000,%00000000,%00001000
-        defb  %00111110,%01111100,%11111000
-        defb  %00111110,%01111100,%11111000
-        defb  %00111110,%01111100,%11111000
-        defb  %00111110,%01111100,%11111000
-        defb  %00011100,%00111000,%01110000
-        defb  66,70,70,66,66,66,66,66,66
+        defb  2,16
+        defb  %00000000,%00001000
+        defb  %00000000,%00011100
+        defb  %00000000,%00001000
+        defb  %00000000,%00110000
+        defb  %00000000,%11100000
+        defb  %00000011,%10000000
+        defb  %00000110,%00000000
+        defb  %00000110,%00000000
+        defb  %01111011,%11011110
+        defb  %01111011,%11011110
+        defb  %01001010,%01010010
+        defb  %01001010,%01010010
+        defb  %01111011,%11011110
+        defb  %01111011,%11011110
+        defb  %01111011,%11011110
+        defb  %00110001,%10001100
+        ; Yellow fuse above three compact red sticks and their bindings.
+        defb  70,70,66,66
 
 SpriteItemKey:
-        defb  3,16
-        defb  %00000000,%00000000,%00000000
-        defb  %00011110,%00000000,%00000000
-        defb  %00110011,%00000000,%00000000
-        defb  %01100001,%10000000,%00000000
-        defb  %11000000,%11000000,%00000000
-        defb  %11000000,%11000000,%00000000
-        defb  %01100001,%10000000,%00000000
-        defb  %00110011,%11111111,%11111111
-        defb  %00011111,%11111111,%11111111
-        defb  %00000000,%00000000,%00011100
-        defb  %00000000,%00000000,%01111100
-        defb  %00000000,%00000000,%01110000
-        defb  %00000000,%00000001,%11110000
-        defb  %00000000,%00000001,%10000000
-        defb  %00000000,%00000000,%00000000
-        defb  %00000000,%00000000,%00000000
-        defb  6,6,6,6,6,6
+        defb  2,16
+        defb  %00000000,%00000000
+        defb  %00111100,%00000000
+        defb  %01100110,%00000000
+        defb  %11000011,%00000000
+        defb  %11000011,%11111111
+        defb  %01100111,%11111111
+        defb  %00111100,%00000110
+        defb  %00000000,%00000110
+        defb  %00000000,%00001111
+        defb  %00000000,%00001100
+        defb  %00000000,%00001111
+        defb  %00000000,%00000011
+        defb  %00000000,%00000000
+        defb  %00000000,%00000000
+        defb  %00000000,%00000000
+        defb  %00000000,%00000000
+        ; Bright brass above, darker yellow teeth below for simple depth.
+        defb  70,70,6,6
 ;-------------------------------------------------------------------------------
