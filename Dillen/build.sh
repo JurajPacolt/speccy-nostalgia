@@ -1,3 +1,3 @@
 #!/bin/sh
 
-wine sjasmplus.exe -Isrc main.asm
+wine sjasmplus.exe -Isrc src/main.asm

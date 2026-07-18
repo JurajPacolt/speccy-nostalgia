@@ -46,6 +46,64 @@ PlayerReset:
         ret
 
 ;-------------------------------------------------------------------------------
+; Pre-shift every walking frame used by the two-pixel movement. This runs once
+; during start-up, outside the game loop, so walking only has to copy a prepared
+; frame instead of shifting 24 bitmap and mask rows every tick.
+PlayerBuildWalkCache:
+        ld    de,PlayerPreparedWalkFrames
+        ld    (PlayerWalkCacheWriteAddress),de
+        xor   a
+        ld    (PlayerWalkCacheDirection),a
+        ld    (PlayerWalkCacheFrame),a
+        ld    (PlayerWalkCacheShift),a
+.PlayerBuildWalkCacheFrame:
+        ld    a,PLAYER_STATE_WALK
+        ld    (PlayerState),a
+        ld    a,(PlayerWalkCacheDirection)
+        ld    (PlayerDirection),a
+        ld    a,(PlayerWalkCacheFrame)
+        add   a,a
+        add   a,a
+        ld    (PlayerAnimationTick),a
+        call  PlayerSelectFrame
+        ld    a,(PlayerWalkCacheShift)
+        call  PlayerPrepareShiftedFrame
+
+        ld    hl,PlayerShiftedBitmap
+        ld    de,(PlayerWalkCacheWriteAddress)
+        ld    bc,PLAYER_SPRITE_HEIGHT*3
+        ldir
+        ld    hl,PlayerShiftedMask
+        ld    bc,PLAYER_SPRITE_HEIGHT*3
+        ldir
+        ld    (PlayerWalkCacheWriteAddress),de
+
+        ld    a,(PlayerWalkCacheShift)
+        add   a,PLAYER_WALK_SPEED
+        cp    8
+        jr    nc,.PlayerBuildWalkCacheNextFrame
+        ld    (PlayerWalkCacheShift),a
+        jr    .PlayerBuildWalkCacheFrame
+.PlayerBuildWalkCacheNextFrame:
+        xor   a
+        ld    (PlayerWalkCacheShift),a
+        ld    a,(PlayerWalkCacheFrame)
+        inc   a
+        cp    4
+        jr    nc,.PlayerBuildWalkCacheNextDirection
+        ld    (PlayerWalkCacheFrame),a
+        jr    .PlayerBuildWalkCacheFrame
+.PlayerBuildWalkCacheNextDirection:
+        xor   a
+        ld    (PlayerWalkCacheFrame),a
+        ld    a,(PlayerWalkCacheDirection)
+        inc   a
+        cp    2
+        ret   nc
+        ld    (PlayerWalkCacheDirection),a
+        jr    .PlayerBuildWalkCacheFrame
+
+;-------------------------------------------------------------------------------
 ; Restore the bytes covered by the previous player frame.
 ; Called immediately before drawing a changed position or animation frame.
 ; The saved bytes belong to the room that was on the screen when they were taken,
@@ -118,8 +176,28 @@ PlayerRender:
         jp    z,PlayerOverlayPrepared
         jp    PlayerRedrawSamePosition
 .PlayerRenderChanged:
+        ; Prepare the new frame while the old one is still visible. Keeping the
+        ; expensive pixel shift before PlayerErase shortens the blank interval to
+        ; just the restore-and-draw pair.
+        ld    hl,(PlayerSelectedSprite)
+        ld    (PlayerRenderedSprite),hl
+        ld    a,(PlayerState)
+        cp    PLAYER_STATE_WALK
+        jr    nz,.PlayerRenderPrepareDynamic
+        ld    a,(PlayerX)
+        and   1
+        jr    nz,.PlayerRenderPrepareDynamic
+        call  PlayerPrepareWalkFrame
+        jr    .PlayerRenderPrepared
+.PlayerRenderPrepareDynamic:
+        ld    hl,(PlayerSelectedSprite)
+        ld    de,(PlayerSelectedMask)
+        ld    a,(PlayerX)
+        and   7
+        call  PlayerPrepareShiftedFrame
+.PlayerRenderPrepared:
         call  PlayerErase
-        jp    PlayerDraw
+        jp    PlayerDrawPrepared
 
 ;-------------------------------------------------------------------------------
 ; Read keyboard and Kempston controls into PlayerInput.
@@ -789,38 +867,51 @@ PlayerPrepareShiftedFrame:
         ld    b,PLAYER_SPRITE_HEIGHT
 .PlayerPrepareRow:
         push  bc
-        ld    a,(hl)
-        ld    (ix+0),a
+        push  de
+        ld    d,(hl)
         inc   hl
-        ld    a,(hl)
-        ld    (ix+1),a
+        ld    e,(hl)
         inc   hl
-        xor   a
-        ld    (ix+2),a
-
-        ld    a,(de)
-        ld    (iy+0),a
-        inc   de
-        ld    a,(de)
-        ld    (iy+1),a
-        inc   de
-        ld    a,255
-        ld    (iy+2),a
-
+        ld    c,0
         ld    a,(PlayerPixelShift)
         or    a
-        jr    z,.PlayerPrepareNextRow
+        jr    z,.PlayerPrepareBitmapReady
         ld    b,a
-.PlayerPrepareShiftLoop:
-        srl   (ix+0)
-        rr    (ix+1)
-        rr    (ix+2)
+.PlayerPrepareBitmapShift:
+        srl   d
+        rr    e
+        rr    c
+        djnz  .PlayerPrepareBitmapShift
+.PlayerPrepareBitmapReady:
+        ld    (ix+0),d
+        ld    (ix+1),e
+        ld    (ix+2),c
+
+        pop   de
+        push  hl
+        ld    a,(de)
+        ld    h,a
+        inc   de
+        ld    a,(de)
+        ld    l,a
+        inc   de
+        ld    c,255
+        ld    a,(PlayerPixelShift)
+        or    a
+        jr    z,.PlayerPrepareMaskReady
+        ld    b,a
+.PlayerPrepareMaskShift:
         scf
-        rr    (iy+0)
-        rr    (iy+1)
-        rr    (iy+2)
-        djnz  .PlayerPrepareShiftLoop
-.PlayerPrepareNextRow:
+        rr    h
+        rr    l
+        rr    c
+        djnz  .PlayerPrepareMaskShift
+.PlayerPrepareMaskReady:
+        ld    (iy+0),h
+        ld    (iy+1),l
+        ld    (iy+2),c
+        pop   hl
+
         inc   ix
         inc   ix
         inc   ix
@@ -831,15 +922,51 @@ PlayerPrepareShiftedFrame:
         djnz  .PlayerPrepareRow
         ret
 
-;-------------------------------------------------------------------------------
-; Draw the current player and save the three covered bytes per scanline.
-PlayerDraw:
-        call  PlayerSelectFrame
-        ld    (PlayerRenderedSprite),hl
+; Copy one cached walking frame into the regular drawing buffers. The cache is
+; ordered by direction, animation frame and the shifts 0, 2, 4 and 6.
+PlayerPrepareWalkFrame:
+        ld    a,(PlayerDirection)
+        rlca
+        rlca
+        rlca
+        rlca
+        ld    b,a
+        ld    a,(PlayerFrameIndex)
+        add   a,a
+        add   a,a
+        add   a,b
+        ld    b,a
         ld    a,(PlayerX)
         and   7
-        call  PlayerPrepareShiftedFrame
+        rrca
+        add   a,b
 
+        ld    l,a
+        ld    h,0
+        add   hl,hl
+        add   hl,hl
+        add   hl,hl
+        add   hl,hl
+        ld    d,h
+        ld    e,l
+        add   hl,hl
+        add   hl,hl
+        add   hl,hl
+        add   hl,de
+        ld    de,PlayerPreparedWalkFrames
+        add   hl,de
+
+        ld    de,PlayerShiftedBitmap
+        ld    bc,PLAYER_SPRITE_HEIGHT*3
+        ldir
+        ld    de,PlayerShiftedMask
+        ld    bc,PLAYER_SPRITE_HEIGHT*3
+        ldir
+        ret
+
+;-------------------------------------------------------------------------------
+; Draw the prepared player and save the three covered bytes per scanline.
+PlayerDrawPrepared:
         ld    a,(PlayerY)
         ld    b,a
         ld    a,(PlayerX)
@@ -1016,6 +1143,10 @@ PlayerSelectedMask:            defw 0
 PlayerRenderedSprite:          defw 0
 PlayerRenderedX:               defb 0
 PlayerRenderedY:               defb 0
+PlayerWalkCacheWriteAddress:   defw 0
+PlayerWalkCacheDirection:      defb 0
+PlayerWalkCacheFrame:          defb 0
+PlayerWalkCacheShift:          defb 0
 
 PlayerJumpDeltas:
         defb  -4, -4, -3, -3, -2, -2, -1, -1, 0, 1, 1, 2, 2, 3, 3, 4, 4
@@ -1025,6 +1156,7 @@ PlayerPixelMasks:
 PlayerBackground:              block PLAYER_SPRITE_HEIGHT*3,0
 PlayerShiftedBitmap:           block PLAYER_SPRITE_HEIGHT*3,0
 PlayerShiftedMask:             block PLAYER_SPRITE_HEIGHT*3,255
+PlayerPreparedWalkFrames:      block 2*4*4*PLAYER_SPRITE_HEIGHT*3*2,0
 
         include "player_sprites.asm"
 ;===============================================================================

@@ -1,5 +1,10 @@
 @echo off
-set HOME=%~dp0
-set SRC_DIR=%HOME%\src
-sjasmplus -I%SRC_DIR% main.asm
+setlocal
+set "PROJECT_DIR=%~dp0"
+
+pushd "%PROJECT_DIR%"
+sjasmplus -Isrc src/main.asm
+set "BUILD_EXIT_CODE=%ERRORLEVEL%"
+popd
 pause
+exit /b %BUILD_EXIT_CODE%

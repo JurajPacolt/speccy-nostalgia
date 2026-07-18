@@ -1,8 +1,16 @@
 @echo off
-set HOME=%~dp0
-set SRC_DIR=%HOME%\src
-sjasmplus -I%SRC_DIR% main.asm
+setlocal
+set "PROJECT_DIR=%~dp0"
 
-rem pause
+pushd "%PROJECT_DIR%"
+sjasmplus -Isrc src/main.asm
+set "BUILD_EXIT_CODE=%ERRORLEVEL%"
+if not "%BUILD_EXIT_CODE%"=="0" (
+    popd
+    exit /b %BUILD_EXIT_CODE%
+)
 
-start SpecEmu %HOME%\Dillen.sna
+start "" SpecEmu "%PROJECT_DIR%Dillen.sna"
+set "RUN_EXIT_CODE=%ERRORLEVEL%"
+popd
+exit /b %RUN_EXIT_CODE%

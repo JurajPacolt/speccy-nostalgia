@@ -14,6 +14,8 @@
 
         call  InitGamePanel
 
+        call  PlayerBuildWalkCache
+
         call  InitAYMusicIM2
         jp    GameMainLoop
 
