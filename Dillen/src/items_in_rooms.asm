@@ -100,7 +100,7 @@ CollectItem:
         call  _ItemsGetStateAddress
         ld    a,(hl)
         cp    b
-        jr    nz,_ItemsActionFailed
+        jp    nz,_ItemsActionFailed
 
         ld    (hl),ITEM_STATE_CARRIED
         call  _ItemsRefreshRoom
@@ -115,9 +115,9 @@ CollectItem:
 ; return CF=1 - used, CF=0 - not carried, invalid ID or wrong room.
 UseItem:
         cp    1
-        jr    c,_ItemsActionFailed
+        jp    c,_ItemsActionFailed
         cp    ITEM_COUNT+1
-        jr    nc,_ItemsActionFailed
+        jp    nc,_ItemsActionFailed
         ld    c,a
 
         call  _ItemsGetActualRoomId
@@ -141,9 +141,39 @@ UseItem:
         jr    nz,_ItemsActionFailed
 
         ld    (hl),ITEM_STATE_USED
+        call  _ItemsRefreshRoom
         scf
         ret
 ; END - UseItem
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - IsBridgeHoleOpen - Query the permanent state of the old bridge.
+; return Z - the pickaxe has opened the hole, NZ - the bridge is still whole.
+IsBridgeHoleOpen:
+        ld    a,(ItemStates+ITEM_PICKAXE-1)
+        cp    ITEM_STATE_USED
+        ret
+; END - IsBridgeHoleOpen
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - ApplyUsedItemsToRoom - Apply permanent item effects after ShowRoom
+; has drawn the static sprites and before it copies their attributes.
+ApplyUsedItemsToRoom:
+        call  _ItemsGetActualRoomId
+        cp    BRIDGE_ROOM_ID
+        ret   nz
+
+        call  IsBridgeHoleOpen
+        ret   nz
+
+        ld    ix,SpriteBridgeHole
+        ld    b,BRIDGE_HOLE_Y
+        ld    c,BRIDGE_HOLE_X
+        ld    de,RoomsAttrCache
+        jp    DrawSprite
+; END - ApplyUsedItemsToRoom
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
@@ -306,6 +336,15 @@ _ItemsDrawnMapRoom:
         defb  255
 _ItemsActualRoomId:
         defb  255
+
+;-------------------------------------------------------------------------------
+; Three empty cells overwrite the middle of the bridge. Their white-ink
+; attributes describe non-solid scenery to the player collision code, while
+; the zero bitmap leaves a clearly visible black opening.
+SpriteBridgeHole:
+        defb  BRIDGE_HOLE_WIDTH,8
+        block BRIDGE_HOLE_WIDTH*8,0
+        block BRIDGE_HOLE_WIDTH,71
 
 ;-------------------------------------------------------------------------------
 ; Spectrum sprites use the same high-contrast, slightly rough silhouettes as

@@ -8,7 +8,8 @@
 ; the window, 7/Q (up) and 6/A (down) - the digits are the same keys used by
 ; the debug room switcher - move a highlight (a bright color bar, not text -
 ; the font has no glyph for '<','=' or '>') between the three carried slots;
-; ENTER on a slot that carries something drops it here and closes the window.
+; ENTER uses the pickaxe when the player is on the old bridge. In every other
+; case it drops the selected item here and closes the window.
 ; SPACE closes the window without dropping anything.
 ;
 ; The window is a modal pause: while it is open, GameMainLoop (game.asm) skips
@@ -125,7 +126,15 @@ InventoryHandleOpen:
         or    a
         ret   z ; Nothing carried in this slot, ENTER does nothing.
         ld    (hl),0
+        ld    c,a
+        cp    ITEM_PICKAXE
+        jr    nz,.IHO_DropItem
+        call  UseItem
+        jr    c,.IHO_Close
+.IHO_DropItem:
+        ld    a,c
         call  DropItem
+.IHO_Close:
         jp    InventoryClose
 .IHO_CheckSpace:
         call  _INV_ReadSpaceEdge

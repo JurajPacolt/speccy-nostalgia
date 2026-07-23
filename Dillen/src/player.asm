@@ -458,6 +458,13 @@ PlayerUpdateJump:
         ld    a,(PlayerVerticalDelta)
         or    a
         jp    p,.PlayerUpdateJumpAdvancePhase
+
+        ; Vertical shafts connect the underground rooms at the upper edge.
+        call  PlayerTryJumpUpThroughBridge
+        ret   c
+        call  PlayerTryJumpUpThroughDeepShaft
+        ret   c
+
         ld    a,(PlayerY)
         cp    PLAYER_Y_MIN
         jr    nc,.PlayerUpdateJumpAdvancePhase
@@ -478,6 +485,11 @@ PlayerUpdateJump:
         or    a
         ret   z
         jp    m,.PlayerUpdateJumpNoLanding
+
+        ; The ordinary bottom edge is solid except for mapped vertical openings:
+        ; the hole in the bridge and the deeper shaft below Room008.
+        call  PlayerTryFallToRoomBelow
+        ret   c
 
         ld    a,(PlayerY)
         add   a,PLAYER_SPRITE_HEIGHT
@@ -582,6 +594,179 @@ PlayerEnterRoom:
         ld    a,(PlayerNextRoom)
         ld    (ActualRoomInMap),a
         or    1
+        ret
+
+;-------------------------------------------------------------------------------
+; Jump from the top of Room008 through the opened bridge into Room001. The
+; right-hand stepping stones bring the player into the rising draught. The wind
+; funnels a straight, left or right jump through the three-cell opening and
+; carries it toward the corresponding edge of the deck. A straight jump uses
+; the direction the player is facing.
+; return CF=1 - the room was changed, CF=0 - no upward transition.
+PlayerTryJumpUpThroughBridge:
+        ld    a,(PlayerY)
+        cp    PLAYER_Y_MIN+1
+        jr    nc,.PlayerTryJumpUpThroughBridgeNo
+
+        ld    a,(ActualRoomInMap)
+        cp    BRIDGE_MAP_INDEX+ROOMS_MAP_WIDTH
+        jr    nz,.PlayerTryJumpUpThroughBridgeNo
+
+        call  IsBridgeHoleOpen
+        jr    nz,.PlayerTryJumpUpThroughBridgeNo
+
+        ; The draught below is wider than the hole. Accept the whole useful
+        ; stream above the stepping stone; the wind aligns the player later.
+        ld    a,(PlayerX)
+        cp    BRIDGE_HOLE_X
+        jr    c,.PlayerTryJumpUpThroughBridgeNo
+        cp    BRIDGE_HOLE_X+BRIDGE_HOLE_WIDTH*8+PLAYER_FOOT_WIDTH+1
+        jr    nc,.PlayerTryJumpUpThroughBridgeNo
+
+        ld    a,(ActualRoomInMap)
+        sub   ROOMS_MAP_WIDTH
+        call  PlayerEnterRoom
+        jr    z,.PlayerTryJumpUpThroughBridgeNo
+
+        ld    b,BRIDGE_HOLE_X
+        ld    c,BRIDGE_HOLE_X+BRIDGE_HOLE_WIDTH*8-PLAYER_FOOT_WIDTH
+        jp    PlayerContinueWindJump
+
+.PlayerTryJumpUpThroughBridgeNo:
+        or    a ; CF=0.
+        ret
+
+;-------------------------------------------------------------------------------
+; Jump from Room010 back through the deep shaft into Room008. The icy platform
+; under the opening provides the required take-off height. As at the bridge,
+; the draught accepts every jump direction and carries the player to a ledge.
+; return CF=1 - the room was changed, CF=0 - no upward transition.
+PlayerTryJumpUpThroughDeepShaft:
+        ld    a,(PlayerY)
+        cp    PLAYER_Y_MIN+1
+        jr    nc,.PlayerTryJumpUpThroughDeepShaftNo
+
+        ld    a,(ActualRoomInMap)
+        cp    UNDERGROUND_SHAFT_MAP_INDEX+ROOMS_MAP_WIDTH
+        jr    nz,.PlayerTryJumpUpThroughDeepShaftNo
+
+        ; Accept every footprint which overlaps the rising four-cell draught.
+        ld    a,(PlayerX)
+        cp    UNDERGROUND_SHAFT_X-PLAYER_FOOT_WIDTH
+        jr    c,.PlayerTryJumpUpThroughDeepShaftNo
+        cp    UNDERGROUND_SHAFT_X+UNDERGROUND_SHAFT_WIDTH*8+1
+        jr    nc,.PlayerTryJumpUpThroughDeepShaftNo
+
+        ld    a,(ActualRoomInMap)
+        sub   ROOMS_MAP_WIDTH
+        call  PlayerEnterRoom
+        jr    z,.PlayerTryJumpUpThroughDeepShaftNo
+
+        ld    b,UNDERGROUND_SHAFT_X
+        ld    c,UNDERGROUND_SHAFT_X+UNDERGROUND_SHAFT_WIDTH*8-PLAYER_FOOT_WIDTH
+        jp    PlayerContinueWindJump
+
+.PlayerTryJumpUpThroughDeepShaftNo:
+        or    a ; CF=0.
+        ret
+
+;-------------------------------------------------------------------------------
+; Continue an upward room transition from the bottom standing level. The wind
+; keeps an explicit left/right direction; a straight jump follows the direction
+; in which the player is facing.
+; B - starting X for a rightward jump, C - starting X for a leftward jump.
+; return CF=1.
+PlayerContinueWindJump:
+        ld    a,(PlayerJumpDirection)
+        cp    254
+        jr    z,.PlayerContinueWindJumpLeft
+        cp    2
+        jr    z,.PlayerContinueWindJumpRight
+        ld    a,(PlayerDirection)
+        or    a
+        jr    z,.PlayerContinueWindJumpLeft
+
+.PlayerContinueWindJumpRight:
+        ld    a,b
+        ld    (PlayerX),a
+        ld    a,2
+        ld    (PlayerJumpDirection),a
+        ld    a,1
+        ld    (PlayerDirection),a
+        jr    .PlayerContinueWindJumpPositioned
+
+.PlayerContinueWindJumpLeft:
+        ld    a,c
+        ld    (PlayerX),a
+        ld    a,254
+        ld    (PlayerJumpDirection),a
+        xor   a
+        ld    (PlayerDirection),a
+
+.PlayerContinueWindJumpPositioned:
+        ; Start at the bottom of the new screen instead of appearing over the
+        ; opening. Restart the vertical curve and let the wind-selected
+        ; horizontal direction carry the player onto one of its ledges.
+        ld    a,PLAYER_FLOOR_Y-PLAYER_SPRITE_HEIGHT
+        ld    (PlayerY),a
+        xor   a
+        ld    (PlayerJumpPhase),a
+        scf
+        ret
+
+;-------------------------------------------------------------------------------
+; Fall through a vertical opening into the map room directly below it. The
+; complete footprint must fit inside the opening; touching either remaining
+; edge keeps the player in the current room through the normal collision code.
+; return CF=1 - the room was changed, CF=0 - no downward transition.
+PlayerTryFallToRoomBelow:
+        ld    a,(PlayerY)
+        cp    PLAYER_FLOOR_Y-PLAYER_SPRITE_HEIGHT
+        jr    c,.PlayerTryFallToRoomBelowNo
+
+        ld    a,(ActualRoomInMap)
+        cp    BRIDGE_MAP_INDEX
+        jr    z,.PlayerTryFallToRoomBelowBridge
+        cp    UNDERGROUND_SHAFT_MAP_INDEX
+        jr    z,.PlayerTryFallToRoomBelowShaft
+        jr    .PlayerTryFallToRoomBelowNo
+
+.PlayerTryFallToRoomBelowBridge:
+        call  IsBridgeHoleOpen
+        jr    nz,.PlayerTryFallToRoomBelowNo
+
+        ld    a,(PlayerX)
+        cp    BRIDGE_HOLE_X
+        jr    c,.PlayerTryFallToRoomBelowNo
+        cp    BRIDGE_HOLE_X+BRIDGE_HOLE_WIDTH*8-PLAYER_FOOT_WIDTH+1
+        jr    nc,.PlayerTryFallToRoomBelowNo
+        jr    .PlayerTryFallToRoomBelowEnter
+
+.PlayerTryFallToRoomBelowShaft:
+        ld    a,(PlayerX)
+        cp    UNDERGROUND_SHAFT_X
+        jr    c,.PlayerTryFallToRoomBelowNo
+        cp    UNDERGROUND_SHAFT_X+UNDERGROUND_SHAFT_WIDTH*8-PLAYER_FOOT_WIDTH+1
+        jr    nc,.PlayerTryFallToRoomBelowNo
+
+.PlayerTryFallToRoomBelowEnter:
+        ld    a,(ActualRoomInMap)
+        add   a,ROOMS_MAP_WIDTH
+        call  PlayerEnterRoom
+        jr    z,.PlayerTryFallToRoomBelowNo
+
+        ; Continue a fresh straight fall from the top of the lower room.
+        ld    a,PLAYER_Y_MIN
+        ld    (PlayerY),a
+        ld    a,9
+        ld    (PlayerJumpPhase),a
+        xor   a
+        ld    (PlayerJumpDirection),a
+        scf
+        ret
+
+.PlayerTryFallToRoomBelowNo:
+        or    a ; CF=0.
         ret
 
 ;-------------------------------------------------------------------------------
@@ -781,7 +966,23 @@ PlayerPixelSolid:
         ld    a,b
         cp    PLAYER_FLOOR_Y
         jr    c,.PlayerPixelInk
-        or    1 ; The bottom floor is solid even where its artwork has holes.
+
+        ; The bottom edge normally closes every room. Room008 is the exception:
+        ; its four-cell opening is the real entrance to Room010. Testing every
+        ; pixel keeps both rock edges solid until the whole footprint is inside.
+        ld    a,(ActualRoomInMap)
+        cp    UNDERGROUND_SHAFT_MAP_INDEX
+        jr    nz,.PlayerPixelFloor
+        ld    a,c
+        cp    UNDERGROUND_SHAFT_X
+        jr    c,.PlayerPixelFloor
+        cp    UNDERGROUND_SHAFT_X+UNDERGROUND_SHAFT_WIDTH*8
+        jr    nc,.PlayerPixelFloor
+        xor   a
+        ret
+
+.PlayerPixelFloor:
+        or    1 ; The ordinary bottom floor is solid despite holes in its artwork.
         ret
 .PlayerPixelInk:
         push  bc
@@ -1763,8 +1964,11 @@ PlayerDynamicSource:           defb 0
 PlayerDynamicComposed:         defb 0
 PlayerDynamicOverlay:          defb 0
 
+; Symmetric 24-pixel jump. At the two apex ticks the complete 24-pixel-high
+; player clears a three-cell rock, so horizontal movement can carry him over
+; its edge and the following descent can land on its top.
 PlayerJumpDeltas:
-        defb  -4, -4, -3, -3, -2, -2, -1, -1, 0, 1, 1, 2, 2, 3, 3, 4, 4
+        defb  -4, -4, -4, -3, -3, -3, -2, -1, 0, 1, 2, 3, 3, 3, 4, 4, 4
 PlayerPixelMasks:
         defb  128, 64, 32, 16, 8, 4, 2, 1
 

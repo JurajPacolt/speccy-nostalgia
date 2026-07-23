@@ -1,5 +1,19 @@
 ;===============================================================================
 ; BEGIN - Room's procedures
+
+; The old bridge is the vertical entrance to Room008. Using the pickaxe removes
+; three deck cells, wide enough for the complete player footprint.
+BRIDGE_ROOM_ID      equ 1
+BRIDGE_MAP_INDEX    equ 13
+BRIDGE_HOLE_X       equ 14*8
+BRIDGE_HOLE_Y       equ 17*8
+BRIDGE_HOLE_WIDTH   equ 3
+
+; Room008 has a four-cell shaft in its floor which continues to Room010.
+UNDERGROUND_SHAFT_MAP_INDEX equ 22
+UNDERGROUND_SHAFT_X         equ 16*8
+UNDERGROUND_SHAFT_WIDTH     equ 4
+
 ;-------------------------------------------------------------------------------
 ; BEGIN - ShowRoom
 ShowRoom:
@@ -74,6 +88,9 @@ ShowRoom:
         add   ix,de
         jr    .ShowRoom1
 .ShowRoom2:
+        ; Used items may permanently alter the static room after it is drawn.
+        ; The pickaxe, for example, removes the middle of the old bridge.
+        call  ApplyUsedItemsToRoom
 
         ld    a,0
         call  SetGameFieldAttributes
@@ -124,7 +141,7 @@ RoomSwitcherRoomsMap:
 ;-------------------------------------------------------------------------------
 ; Here is game started, if the player begin.
 StartRoomInMap:
-        defb  013 ; Map index of Room001 (the old bridge).
+        defb  BRIDGE_MAP_INDEX ; Map index of Room001 (the old bridge).
 
 ; Actual room, it actually showed.
 ActualRoomInMap:
@@ -222,6 +239,8 @@ Room001:
         defw  SPRITE_BRIDGE_ELEMENT
         defb  13*8, 136, 0
         defw  SPRITE_BRIDGE_ELEMENT
+        ; ApplyUsedItemsToRoom clears these three central deck cells after the
+        ; pickaxe is used, creating the entrance to the shaft below.
         defb  14*8, 136, 0
         defw  SPRITE_BRIDGE_ELEMENT
         defb  15*8, 136, 0
