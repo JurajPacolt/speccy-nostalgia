@@ -14,10 +14,22 @@ PLAYER_X_MAX                   equ 232
 PLAYER_Y_MIN                   equ 40
 PLAYER_FLOOR_Y                 equ 160
 PLAYER_JUMP_PHASES             equ 17
+PLAYER_JUMP_CURL_PHASE         equ 6
+PLAYER_JUMP_FALL_PHASE         equ 11
 PLAYER_WALK_SPEED              equ 2  ; Pixels per tick, and so the width of the
                                       ; strip every step uncovers in front of him.
 PLAYER_FOOT_WIDTH              equ 16 ; The frame is 24 lines high and 16 wide.
 PLAYER_CELL_HEIGHT             equ 8  ; One attribute, the step he still walks up.
+PLAYER_IDLE_BLINK_START        equ 80
+PLAYER_IDLE_BLINK_END          equ 84
+PLAYER_IDLE_HOP_SQUASH_START   equ 192
+PLAYER_IDLE_HOP_AIR_START      equ 196
+PLAYER_IDLE_HOP_LAND_START     equ 208
+PLAYER_IDLE_HOP_END            equ 212
+PLAYER_OVERLAP_NONE            equ 0
+PLAYER_OVERLAP_SAME_COLUMN     equ 1
+PLAYER_OVERLAP_NEW_RIGHT       equ 2
+PLAYER_OVERLAP_NEW_LEFT        equ 3
 
 ; The ink of an attribute tells what the room painted there. It is the whole
 ; material table of the game.
@@ -105,7 +117,7 @@ PlayerBuildWalkCache:
 
 ;-------------------------------------------------------------------------------
 ; Restore the bytes covered by the previous player frame.
-; Called immediately before drawing a changed position or animation frame.
+; Used when the new position cannot directly replace the old horizontal strip.
 ; The saved bytes belong to the room that was on the screen when they were taken,
 ; which is LastShowedRoomInMap and not the room he is already walking in: when he
 ; leaves a room he is still drawn over the old picture for that one frame.
@@ -176,9 +188,8 @@ PlayerRender:
         jp    z,PlayerOverlayPrepared
         jp    PlayerRedrawSamePosition
 .PlayerRenderChanged:
-        ; Prepare the new frame while the old one is still visible. Keeping the
-        ; expensive pixel shift before PlayerErase shortens the blank interval to
-        ; just the restore-and-draw pair.
+        ; Prepare the shifted frame while the old one is still visible. The
+        ; background and final image are also composed before any screen erase.
         ld    hl,(PlayerSelectedSprite)
         ld    (PlayerRenderedSprite),hl
         ld    a,(PlayerState)
@@ -196,8 +207,26 @@ PlayerRender:
         and   7
         call  PlayerPrepareShiftedFrame
 .PlayerRenderPrepared:
+        call  PlayerComposePrepared
+
+        ; Horizontal movement at the same height can replace the old frame
+        ; directly. At a byte boundary only the one column left behind needs
+        ; restoring; the player is never completely removed from the screen.
+        ld    a,(PlayerOverlapMode)
+        or    a
+        jr    z,.PlayerRenderEraseAll
+        ld    a,(PlayerY)
+        ld    hl,PlayerRenderedY
+        cp    (hl)
+        jr    nz,.PlayerRenderEraseAll
+        ld    a,(PlayerOverlapMode)
+        cp    PLAYER_OVERLAP_SAME_COLUMN
+        jp    z,PlayerDrawComposed
+        call  PlayerEraseOutgoingColumn
+        jp    PlayerDrawComposed
+.PlayerRenderEraseAll:
         call  PlayerErase
-        jp    PlayerDrawPrepared
+        jp    PlayerDrawComposed
 
 ;-------------------------------------------------------------------------------
 ; Read keyboard and Kempston controls into PlayerInput.
@@ -766,24 +795,28 @@ PlayerSelectFrame:
         xor   a
         ld    (PlayerFrameIndex),a
         ld    a,(PlayerIdleTick)
-        cp    96
-        jr    c,.PlayerSelectIdleBreathe
-        cp    100
-        jr    nc,.PlayerSelectIdleYawn
+        cp    PLAYER_IDLE_BLINK_START
+        jr    c,.PlayerSelectIdleNormal
+        cp    PLAYER_IDLE_BLINK_END
+        jr    c,.PlayerSelectIdleBlink
+        cp    PLAYER_IDLE_HOP_SQUASH_START
+        jr    c,.PlayerSelectIdleNormal
+        cp    PLAYER_IDLE_HOP_AIR_START
+        jr    c,.PlayerSelectIdleSquash
+        cp    PLAYER_IDLE_HOP_LAND_START
+        jr    c,.PlayerSelectIdleHop
+        cp    PLAYER_IDLE_HOP_END
+        jr    nc,.PlayerSelectIdleNormal
         ld    a,2
         jr    .PlayerSelectIdleReady
-.PlayerSelectIdleYawn:
-        cp    224
-        jr    c,.PlayerSelectIdleBreathe
-        cp    236
-        jr    nc,.PlayerSelectIdleBreathe
-        ld    a,3
-        jr    .PlayerSelectIdleReady
-.PlayerSelectIdleBreathe:
-        and   31
-        cp    28
-        jr    c,.PlayerSelectIdleNormal
+.PlayerSelectIdleBlink:
         ld    a,1
+        jr    .PlayerSelectIdleReady
+.PlayerSelectIdleSquash:
+        ld    a,2
+        jr    .PlayerSelectIdleReady
+.PlayerSelectIdleHop:
+        ld    a,3
         jr    .PlayerSelectIdleReady
 .PlayerSelectIdleNormal:
         xor   a
@@ -808,6 +841,7 @@ PlayerSelectFrame:
         ld    a,(PlayerDirection)
         or    a
         jr    z,.PlayerSelectWalkLeft
+        ld    a,(PlayerFrameIndex)
         ld    hl,PlayerWalkRightSpriteFrames
         call  PlayerPointerFromTable
         ld    (PlayerCurrentSprite),hl
@@ -828,21 +862,52 @@ PlayerSelectFrame:
         ret
 
 .PlayerSelectJump:
+        ld    a,(PlayerJumpPhase)
+        cp    PLAYER_JUMP_CURL_PHASE
+        jr    c,.PlayerSelectJumpRise
+        cp    PLAYER_JUMP_FALL_PHASE
+        jr    c,.PlayerSelectJumpCurl
+        ld    a,2
+        jr    .PlayerSelectJumpFrameReady
+.PlayerSelectJumpCurl:
+        ld    a,1
+        jr    .PlayerSelectJumpFrameReady
+.PlayerSelectJumpRise:
+        xor   a
+.PlayerSelectJumpFrameReady:
+        ld    (PlayerFrameIndex),a
+
         ld    a,(PlayerJumpDirection)
         cp    254
         jr    z,.PlayerSelectJumpLeft
         cp    2
         jr    z,.PlayerSelectJumpRight
-        ld    hl,PlayerSpriteJumpUp
-        ld    de,PlayerMaskJumpUp
-        ret
+        ld    a,(PlayerFrameIndex)
+        ld    hl,PlayerJumpUpSpriteFrames
+        call  PlayerPointerFromTable
+        ld    (PlayerCurrentSprite),hl
+        ld    a,(PlayerFrameIndex)
+        ld    hl,PlayerJumpUpMaskFrames
+        jr    .PlayerSelectJumpMask
 .PlayerSelectJumpLeft:
-        ld    hl,PlayerSpriteJumpLeft
-        ld    de,PlayerMaskJumpLeft
-        ret
+        ld    a,(PlayerFrameIndex)
+        ld    hl,PlayerJumpLeftSpriteFrames
+        call  PlayerPointerFromTable
+        ld    (PlayerCurrentSprite),hl
+        ld    a,(PlayerFrameIndex)
+        ld    hl,PlayerJumpLeftMaskFrames
+        jr    .PlayerSelectJumpMask
 .PlayerSelectJumpRight:
-        ld    hl,PlayerSpriteJumpRight
-        ld    de,PlayerMaskJumpRight
+        ld    a,(PlayerFrameIndex)
+        ld    hl,PlayerJumpRightSpriteFrames
+        call  PlayerPointerFromTable
+        ld    (PlayerCurrentSprite),hl
+        ld    a,(PlayerFrameIndex)
+        ld    hl,PlayerJumpRightMaskFrames
+.PlayerSelectJumpMask:
+        call  PlayerPointerFromTable
+        ex    de,hl
+        ld    hl,(PlayerCurrentSprite)
         ret
 
 ; A is a word index, HL is the table. Return the selected pointer in HL.
@@ -965,52 +1030,547 @@ PlayerPrepareWalkFrame:
         ret
 
 ;-------------------------------------------------------------------------------
-; Draw the prepared player and save the three covered bytes per scanline.
-PlayerDrawPrepared:
+; Build the new background and final masked image before the old player is
+; erased. Bytes covered by the old frame are recovered from PlayerBackground,
+; because reading them directly from the screen would capture the player.
+PlayerComposePrepared:
         ld    a,(PlayerY)
         ld    b,a
         ld    a,(PlayerX)
         ld    c,a
         call  ScreenAddr
-        ld    (PlayerOldScreenAddress),hl
+        ld    (PlayerNextScreenAddress),hl
+        call  PlayerFindBackgroundOverlap
 
-        ld    ix,PlayerShiftedBitmap
-        ld    iy,PlayerShiftedMask
-        ld    de,PlayerBackground
+        ld    hl,(PlayerNextScreenAddress)
+        ld    de,PlayerNextBackground
+        ld    a,(PlayerY)
+        ld    (PlayerComposeY),a
         ld    b,PLAYER_SPRITE_HEIGHT
-.PlayerDrawRow:
+.PlayerComposeCaptureRow:
         push  bc
         push  hl
+
+        ; Start with the bytes currently visible at the new position.
+        push  de
         ld    a,(hl)
         ld    (de),a
+        inc   de
+        inc   hl
+        ld    a,(hl)
+        ld    (de),a
+        inc   de
+        inc   hl
+        ld    a,(hl)
+        ld    (de),a
+        pop   de
+        pop   hl
+
+        ld    a,(PlayerOverlapMode)
+        or    a
+        jr    z,.PlayerComposeCaptureNext
+
+        ; Does this new scanline cross the old 24-line frame?
+        ld    a,(PlayerRenderedY)
+        ld    c,a
+        ld    a,(PlayerComposeY)
+        sub   c
+        jr    c,.PlayerComposeCaptureNext
+        cp    PLAYER_SPRITE_HEIGHT
+        jr    nc,.PlayerComposeCaptureNext
+
+        ; HL = matching scanline in the saved old background.
+        push  hl
+        push  de
+        ld    c,a
+        ld    b,0
+        ld    h,b
+        ld    l,c
+        add   hl,hl
+        add   hl,bc
+        ld    bc,PlayerBackground
+        add   hl,bc
+
+        ld    a,(PlayerOverlapMode)
+        cp    PLAYER_OVERLAP_SAME_COLUMN
+        jr    z,.PlayerComposeCopyThree
+        cp    PLAYER_OVERLAP_NEW_RIGHT
+        jr    z,.PlayerComposeCopyRight
+
+        ; The new byte strip starts one byte left of the old strip.
+        inc   de
+        jr    .PlayerComposeCopyTwo
+.PlayerComposeCopyRight:
+        ; The new strip starts one byte right, so old byte zero is outside it.
+        inc   hl
+.PlayerComposeCopyTwo:
+        ld    a,(hl)
+        ld    (de),a
+        inc   de
+        inc   hl
+        ld    a,(hl)
+        ld    (de),a
+        jr    .PlayerComposeOldRowReady
+.PlayerComposeCopyThree:
+        ld    a,(hl)
+        ld    (de),a
+        inc   de
+        inc   hl
+        ld    a,(hl)
+        ld    (de),a
+        inc   de
+        inc   hl
+        ld    a,(hl)
+        ld    (de),a
+.PlayerComposeOldRowReady:
+        pop   de
+        pop   hl
+
+.PlayerComposeCaptureNext:
+        ld    a,(PlayerComposeY)
+        inc   a
+        ld    (PlayerComposeY),a
+        inc   de
+        inc   de
+        inc   de
+        call  DownHL
+        pop   bc
+        djnz  .PlayerComposeCaptureRow
+
+        ; Compose all layers in RAM while the old frame is still on screen.
+        ld    ix,PlayerNextBackground
+        ld    iy,PlayerShiftedMask
+        ld    hl,PlayerShiftedBitmap
+        ld    de,PlayerComposedFrame
+        ld    b,PLAYER_SPRITE_HEIGHT*3
+.PlayerComposeByte:
+        ld    a,(ix+0)
         and   (iy+0)
-        or    (ix+0)
-        ld    (hl),a
-        inc   de
-        inc   hl
-        ld    a,(hl)
+        or    (hl)
         ld    (de),a
-        and   (iy+1)
-        or    (ix+1)
-        ld    (hl),a
-        inc   de
+        inc   ix
+        inc   iy
         inc   hl
+        inc   de
+        djnz  .PlayerComposeByte
+        ret
+
+; Determine how the three byte columns at the new position overlap the old
+; frame. A room redraw invalidates the old screen image, so it never overlaps.
+PlayerFindBackgroundOverlap:
+        xor   a
+        ld    (PlayerOverlapMode),a
+        ld    a,(PlayerBackgroundValid)
+        or    a
+        ret   z
+        ld    a,(LastShowedRoomInMap)
+        ld    hl,PlayerDrawnRoom
+        cp    (hl)
+        ret   nz
+
+        ld    a,(PlayerX)
+        rrca
+        rrca
+        rrca
+        and   31
+        ld    c,a
+        ld    a,(PlayerRenderedX)
+        rrca
+        rrca
+        rrca
+        and   31
+        ld    b,a
+        cp    c
+        jr    z,.PlayerOverlapSame
+        inc   a
+        cp    c
+        jr    z,.PlayerOverlapRight
+        ld    a,c
+        inc   a
+        cp    b
+        ret   nz
+        ld    a,PLAYER_OVERLAP_NEW_LEFT
+        ld    (PlayerOverlapMode),a
+        ret
+.PlayerOverlapSame:
+        ld    a,PLAYER_OVERLAP_SAME_COLUMN
+        ld    (PlayerOverlapMode),a
+        ret
+.PlayerOverlapRight:
+        ld    a,PLAYER_OVERLAP_NEW_RIGHT
+        ld    (PlayerOverlapMode),a
+        ret
+
+; Prepare the position used by the byte-level dynamic animation helpers.
+; B/C - pixel Y/X. All other registers except A are preserved.
+PlayerBeginDynamicArea:
+        push  bc
+        push  hl
+        ld    a,b
+        ld    (PlayerDynamicY),a
+        ld    a,c
+        rrca
+        rrca
+        rrca
+        and   31
+        ld    (PlayerDynamicStartColumn),a
+        ld    (PlayerDynamicColumn),a
+        ld    a,(PlayerRenderedX)
+        rrca
+        rrca
+        rrca
+        and   31
+        ld    (PlayerDynamicPlayerColumn),a
+
+        xor   a
+        ld    (PlayerDynamicActive),a
+        ld    a,(PlayerBackgroundValid)
+        or    a
+        jr    z,.PlayerBeginDynamicDone
+        ld    a,(LastShowedRoomInMap)
+        ld    hl,PlayerDrawnRoom
+        cp    (hl)
+        jr    nz,.PlayerBeginDynamicDone
+        ld    a,1
+        ld    (PlayerDynamicActive),a
+.PlayerBeginDynamicDone:
+        pop   hl
+        pop   bc
+        ret
+
+; Move the dynamic animation cursor to the start of the next pixel line.
+PlayerAdvanceDynamicRow:
+        ld    a,(PlayerDynamicY)
+        inc   a
+        ld    (PlayerDynamicY),a
+        ld    a,(PlayerDynamicStartColumn)
+        ld    (PlayerDynamicColumn),a
+        ret
+
+; Draw an OR-composited sprite behind the already rendered player.
+; IX - sprite address, B/C - pixel Y/X.
+PlayerDrawDynamicSpriteWithoutAttrs:
+        call  PlayerBeginDynamicArea
+        call  ScreenAddr
+        ld    c,(ix+1)
+        ld    b,(ix+0)
+.PlayerDrawDynamicWARow:
+        push  bc
+        push  hl
+.PlayerDrawDynamicWAByte:
+        ld    a,(ix+2)
+        call  PlayerOverlayDynamicByte
+        ld    (hl),a
+        inc   hl
+        inc   ix
+        ld    a,(PlayerDynamicColumn)
+        inc   a
+        ld    (PlayerDynamicColumn),a
+        djnz  .PlayerDrawDynamicWAByte
+        pop   hl
+        call  DownHL
+        call  PlayerAdvanceDynamicRow
+        pop   bc
+        dec   c
+        jr    nz,.PlayerDrawDynamicWARow
+        ret
+
+; Draw a byte-aligned dynamic sprite behind the already rendered player.
+; The animation byte becomes the new saved player background, while the screen
+; receives the animation and player composited together in one write.
+; IX - sprite address, B/C - pixel Y/X, DE - attribute destination.
+PlayerDrawDynamicSprite:
+        ld    a,(PlayerBackgroundValid)
+        or    a
+        jp    z,DrawSprite
+        ld    a,(LastShowedRoomInMap)
+        ld    hl,PlayerDrawnRoom
+        cp    (hl)
+        jp    nz,DrawSprite
+
+        push  bc
+        ld    a,b
+        ld    (PlayerDynamicY),a
+        ld    a,(ix+1)
+        add   a,b
+        ld    hl,PlayerRenderedY
+        cp    (hl)
+        jp    c,.PlayerDrawDynamicFallback
+        jp    z,.PlayerDrawDynamicFallback
+        ld    a,(PlayerRenderedY)
+        add   a,PLAYER_SPRITE_HEIGHT
+        cp    b
+        jp    c,.PlayerDrawDynamicFallback
+        jp    z,.PlayerDrawDynamicFallback
+
+        ld    a,c
+        rrca
+        rrca
+        rrca
+        and   31
+        ld    (PlayerDynamicStartColumn),a
+        ld    c,a
+        ld    a,(PlayerRenderedX)
+        rrca
+        rrca
+        rrca
+        and   31
+        ld    (PlayerDynamicPlayerColumn),a
+        ld    b,a
+        ld    a,(ix+0)
+        add   a,c
+        cp    b
+        jp    c,.PlayerDrawDynamicFallback
+        jp    z,.PlayerDrawDynamicFallback
+        ld    a,b
+        add   a,3
+        cp    c
+        jp    c,.PlayerDrawDynamicFallback
+        jp    z,.PlayerDrawDynamicFallback
+        pop   bc
+        call  PlayerBeginDynamicArea
+
+        ; Pixel data. This follows DrawSprite's IX convention, so after the last
+        ; byte IX points two bytes before the attribute data.
+        push  de
+        ld    a,(PlayerDynamicY)
+        ld    b,a
+        ld    a,(PlayerDynamicStartColumn)
+        rlca
+        rlca
+        rlca
+        ld    c,a
+        push  bc
+        call  ScreenAddr
+        pop   bc
+        push  bc
+        ld    c,(ix+1)
+        ld    b,(ix+0)
+        push  bc
+.PlayerDrawDynamicRow:
+        push  bc
+        push  hl
+        ld    a,(PlayerDynamicStartColumn)
+        ld    (PlayerDynamicColumn),a
+.PlayerDrawDynamicByte:
+        ld    a,(ix+2)
+        call  PlayerCompositeDynamicByte
+        ld    (hl),a
+        inc   hl
+        inc   ix
+        ld    a,(PlayerDynamicColumn)
+        inc   a
+        ld    (PlayerDynamicColumn),a
+        djnz  .PlayerDrawDynamicByte
+        pop   hl
+        call  DownHL
+        ld    a,(PlayerDynamicY)
+        inc   a
+        ld    (PlayerDynamicY),a
+        pop   bc
+        dec   c
+        jr    nz,.PlayerDrawDynamicRow
+
+        ; Attribute data, identical to DrawSprite.
+        pop   de
+        pop   bc
+        call  AttrAddrViaPixelPos
+        ld    bc,de
+        ld    a,c
+        rrca
+        rrca
+        rrca
+        ld    c,a
+        pop   de
+        add   hl,de
+        ld    de,32
+.PlayerDrawDynamicAttrRow:
+        push  bc
+        push  hl
+.PlayerDrawDynamicAttrByte:
+        ld    a,(ix+2)
+        ld    (hl),a
+        inc   hl
+        inc   ix
+        djnz  .PlayerDrawDynamicAttrByte
+        pop   hl
+        add   hl,de
+        pop   bc
+        dec   c
+        jr    nz,.PlayerDrawDynamicAttrRow
+        ret
+
+.PlayerDrawDynamicFallback:
+        pop   bc
+        jp    DrawSprite
+
+; A - byte currently visible on screen. Return the clean animation/background
+; byte saved underneath the player when this position overlaps him.
+PlayerReadDynamicBackgroundByte:
+        ld    (PlayerDynamicSource),a
+        push  bc
+        push  de
+        push  hl
+        call  PlayerDynamicBufferOffset
+        jr    nc,.PlayerReadDynamicRaw
+        ld    hl,PlayerBackground
+        add   hl,bc
         ld    a,(hl)
-        ld    (de),a
-        and   (iy+2)
-        or    (ix+2)
+        jr    .PlayerReadDynamicReady
+.PlayerReadDynamicRaw:
+        ld    a,(PlayerDynamicSource)
+.PlayerReadDynamicReady:
+        ld    (PlayerDynamicComposed),a
+        pop   hl
+        pop   de
+        pop   bc
+        ld    a,(PlayerDynamicComposed)
+        ret
+
+; A - sprite byte. OR it into the clean background and return a screen byte
+; which keeps the player in front. HL points to the current screen byte.
+PlayerOverlayDynamicByte:
+        ld    (PlayerDynamicOverlay),a
+        push  bc
+        ld    a,(hl)
+        call  PlayerReadDynamicBackgroundByte
+        ld    c,a
+        ld    a,(PlayerDynamicOverlay)
+        or    c
+        pop   bc
+        jp    PlayerCompositeDynamicByte
+
+; A - byte of the dynamic animation. Return the byte with the player over it.
+PlayerCompositeDynamicByte:
+        ld    (PlayerDynamicSource),a
+        push  bc
+        push  de
+        push  hl
+        call  PlayerDynamicBufferOffset
+        jr    nc,.PlayerCompositeDynamicRaw
+
+        ld    hl,PlayerBackground
+        add   hl,bc
+        ld    a,(PlayerDynamicSource)
+        ld    (hl),a
+
+        ld    hl,PlayerShiftedMask
+        add   hl,bc
+        ld    a,(PlayerDynamicSource)
+        and   (hl)
+        ld    (PlayerDynamicComposed),a
+        ld    hl,PlayerShiftedBitmap
+        add   hl,bc
+        ld    a,(PlayerDynamicComposed)
+        or    (hl)
+        jr    .PlayerCompositeDynamicReady
+
+.PlayerCompositeDynamicRaw:
+        ld    a,(PlayerDynamicSource)
+.PlayerCompositeDynamicReady:
+        pop   hl
+        pop   de
+        pop   bc
+        ret
+
+; Return CF=1 and BC = byte offset in the player's three-byte scanline buffer
+; when the current dynamic animation byte overlaps the rendered player.
+PlayerDynamicBufferOffset:
+        ld    a,(PlayerDynamicActive)
+        or    a
+        jr    z,.PlayerDynamicBufferOutside
+
+        ld    a,(PlayerRenderedY)
+        ld    c,a
+        ld    a,(PlayerDynamicY)
+        sub   c
+        jr    c,.PlayerDynamicBufferOutside
+        cp    PLAYER_SPRITE_HEIGHT
+        jr    nc,.PlayerDynamicBufferOutside
+        ld    e,a
+
+        ld    a,(PlayerDynamicPlayerColumn)
+        ld    c,a
+        ld    a,(PlayerDynamicColumn)
+        sub   c
+        jr    c,.PlayerDynamicBufferOutside
+        cp    3
+        jr    nc,.PlayerDynamicBufferOutside
+        ld    d,a
+
+        ld    a,e
+        add   a,a
+        add   a,e
+        add   a,d
+        ld    c,a
+        ld    b,0
+        scf
+        ret
+.PlayerDynamicBufferOutside:
+        or    a
+        ret
+
+; Restore the one old byte column which is outside a horizontally adjacent new
+; frame. The two overlapping columns are replaced by PlayerDrawComposed.
+PlayerEraseOutgoingColumn:
+        ld    hl,(PlayerOldScreenAddress)
+        ld    de,PlayerBackground
+        ld    a,(PlayerOverlapMode)
+        cp    PLAYER_OVERLAP_NEW_RIGHT
+        jr    z,.PlayerEraseOutgoingReady
+        cp    PLAYER_OVERLAP_NEW_LEFT
+        ret   nz
+        inc   hl
+        inc   hl
+        inc   de
+        inc   de
+.PlayerEraseOutgoingReady:
+        ld    b,PLAYER_SPRITE_HEIGHT
+.PlayerEraseOutgoingRow:
+        push  bc
+        push  hl
+        ld    a,(de)
         ld    (hl),a
         inc   de
-        inc   ix
-        inc   ix
-        inc   ix
-        inc   iy
-        inc   iy
-        inc   iy
+        inc   de
+        inc   de
         pop   hl
         call  DownHL
         pop   bc
-        djnz  .PlayerDrawRow
+        djnz  .PlayerEraseOutgoingRow
+        ret
+
+; Copy the already composed frame to the screen. Only writes remain between
+; PlayerErase and this routine, which keeps the blank interval short.
+PlayerDrawComposed:
+        ld    hl,(PlayerNextScreenAddress)
+        ld    (PlayerOldScreenAddress),hl
+        ld    de,PlayerComposedFrame
+        ld    b,PLAYER_SPRITE_HEIGHT
+.PlayerDrawComposedRow:
+        push  bc
+        push  hl
+        ld    a,(de)
+        ld    (hl),a
+        inc   de
+        inc   hl
+        ld    a,(de)
+        ld    (hl),a
+        inc   de
+        inc   hl
+        ld    a,(de)
+        ld    (hl),a
+        inc   de
+        pop   hl
+        call  DownHL
+        pop   bc
+        djnz  .PlayerDrawComposedRow
+
+        ; Keep the uncomposited bytes for erasing this frame next time.
+        ld    hl,PlayerNextBackground
+        ld    de,PlayerBackground
+        ld    bc,PLAYER_SPRITE_HEIGHT*3
+        ldir
 
         ld    a,1
         ld    (PlayerBackgroundValid),a
@@ -1137,6 +1697,7 @@ PlayerPixelShift:              defb 0
 PlayerBackgroundValid:         defb 0
 PlayerDrawnRoom:               defb 255
 PlayerOldScreenAddress:        defw 0
+PlayerNextScreenAddress:       defw 0
 PlayerCurrentSprite:           defw 0
 PlayerSelectedSprite:          defw 0
 PlayerSelectedMask:            defw 0
@@ -1147,6 +1708,16 @@ PlayerWalkCacheWriteAddress:   defw 0
 PlayerWalkCacheDirection:      defb 0
 PlayerWalkCacheFrame:          defb 0
 PlayerWalkCacheShift:          defb 0
+PlayerOverlapMode:             defb PLAYER_OVERLAP_NONE
+PlayerComposeY:                defb 0
+PlayerDynamicY:                defb 0
+PlayerDynamicStartColumn:      defb 0
+PlayerDynamicPlayerColumn:     defb 0
+PlayerDynamicColumn:           defb 0
+PlayerDynamicActive:           defb 0
+PlayerDynamicSource:           defb 0
+PlayerDynamicComposed:         defb 0
+PlayerDynamicOverlay:          defb 0
 
 PlayerJumpDeltas:
         defb  -4, -4, -3, -3, -2, -2, -1, -1, 0, 1, 1, 2, 2, 3, 3, 4, 4
@@ -1154,6 +1725,8 @@ PlayerPixelMasks:
         defb  128, 64, 32, 16, 8, 4, 2, 1
 
 PlayerBackground:              block PLAYER_SPRITE_HEIGHT*3,0
+PlayerNextBackground:          block PLAYER_SPRITE_HEIGHT*3,0
+PlayerComposedFrame:           block PLAYER_SPRITE_HEIGHT*3,0
 PlayerShiftedBitmap:           block PLAYER_SPRITE_HEIGHT*3,0
 PlayerShiftedMask:             block PLAYER_SPRITE_HEIGHT*3,255
 PlayerPreparedWalkFrames:      block 2*4*4*PLAYER_SPRITE_HEIGHT*3*2,0

@@ -176,7 +176,7 @@ _AIR_R3_Fall:
         ld    a,(_AIR_Room3_pos)
         ld    b,a
         ld    c,AIR_ROOM3_DROP_X
-        call  DrawSpriteWithoutAttrs
+        call  PlayerDrawDynamicSpriteWithoutAttrs
         ret
 
 ;----- The drop is hitting the ground. -----------------------------------------
@@ -238,7 +238,7 @@ _AIR_R3_DrawSplash:
         pop   ix
         ld    b,AIR_ROOM3_GROUND_Y
         ld    c,AIR_ROOM3_SPLASH_X
-        call  DrawSpriteWithoutAttrs
+        call  PlayerDrawDynamicSpriteWithoutAttrs
         ret
 
 ;----- Waiting for the next drop. ----------------------------------------------
@@ -489,11 +489,15 @@ _AIR_W_Hide:
 
         ld    c,(ix+0) ; Xos.
         ld    b,(ix+1) ; Yos.
+        call  PlayerBeginDynamicArea
         call  ScreenAddr
         ld    b,8
 _AIR_W_H_Line:
-        ld    (hl),0
+        xor   a
+        call  PlayerCompositeDynamicByte
+        ld    (hl),a
         call  DownHL
+        call  PlayerAdvanceDynamicRow
         djnz  _AIR_W_H_Line
         ret
 ; END - _AIR_W_Hide
@@ -507,6 +511,7 @@ _AIR_W_H_Line:
 _AIR_W_Show:
         ld    c,(ix+0) ; Xos.
         ld    b,(ix+1) ; Yos.
+        call  PlayerBeginDynamicArea
         call  ScreenAddr ; HL - place of the wisp in the VRAM.
         push  hl
 
@@ -514,9 +519,11 @@ _AIR_W_Show:
         ld    c,0
 _AIR_W_S_Empty:
         ld    a,(hl)
+        call  PlayerReadDynamicBackgroundByte
         or    c
         ld    c,a
         call  DownHL
+        call  PlayerAdvanceDynamicRow
         djnz  _AIR_W_S_Empty
 
         pop   hl
@@ -557,12 +564,17 @@ _AIR_W_S_Image:
         ex    de,hl ; DE - the actual image of the wisp.
 
         pop   hl ; HL - place of the wisp in the VRAM.
+        ld    c,(ix+0)
+        ld    b,(ix+1)
+        call  PlayerBeginDynamicArea
         ld    b,8
 _AIR_W_S_Line:
         ld    a,(de)
-        ld    (hl),a ; The background is black, the wisp can be putted here.
+        call  PlayerCompositeDynamicByte
+        ld    (hl),a
         inc   de
         call  DownHL
+        call  PlayerAdvanceDynamicRow
         djnz  _AIR_W_S_Line
 
         ld    (ix+3),1 ; The wisp must be cleaned in the next frame.
@@ -698,6 +710,7 @@ _AIR_WindShapes:
 ; C - Xos
 ; D - Width of the sprite in the characters.
 _AIR_SaveBackground:
+        call  PlayerBeginDynamicArea
         call  ScreenAddr
         ld    b,8  ; height
 _AIR_SB_Line:
@@ -706,12 +719,17 @@ _AIR_SB_Line:
         ld    b,d
 _AIR_SB_Byte:
         ld    a,(hl)
+        call  PlayerReadDynamicBackgroundByte
         ld    (ix+0),a
         inc   ix
         inc   hl
+        ld    a,(PlayerDynamicColumn)
+        inc   a
+        ld    (PlayerDynamicColumn),a
         djnz  _AIR_SB_Byte
         pop   hl
         call  DownHL
+        call  PlayerAdvanceDynamicRow
         pop   bc
         djnz  _AIR_SB_Line
         ret
@@ -725,6 +743,7 @@ _AIR_SB_Byte:
 ; C - Xos
 ; D - Width of the sprite in the characters.
 _AIR_RestoreBackground:
+        call  PlayerBeginDynamicArea
         call  ScreenAddr
         ld    b,8  ; height
 _AIR_RB_Line:
@@ -733,12 +752,17 @@ _AIR_RB_Line:
         ld    b,d
 _AIR_RB_Byte:
         ld    a,(ix+0)
+        call  PlayerCompositeDynamicByte
         ld    (hl),a
         inc   ix
         inc   hl
+        ld    a,(PlayerDynamicColumn)
+        inc   a
+        ld    (PlayerDynamicColumn),a
         djnz  _AIR_RB_Byte
         pop   hl
         call  DownHL
+        call  PlayerAdvanceDynamicRow
         pop   bc
         djnz  _AIR_RB_Line
         ret

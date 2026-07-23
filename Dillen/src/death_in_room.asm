@@ -72,7 +72,7 @@ _Death_Draw:
         ld    b,DEATH_Y
         ld    c,DEATH_X
         ld    de,22528
-        jp    DrawSprite
+        jp    PlayerDrawDynamicSprite
 ; END - DeathInRoom
 ;-------------------------------------------------------------------------------
 

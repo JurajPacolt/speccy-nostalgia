@@ -81,7 +81,7 @@ _TIR_DF_Loop:
         ; The attributes are written directly to the screen, so the fire is
         ; flickering with her color too.
         ld    de,22528
-        call  DrawSprite
+        call  PlayerDrawDynamicSprite
 
         ld    hl,_TIR_Index
         inc   (hl)
