@@ -1,0 +1,12 @@
+Use case: stylized-concept
+Asset type: ZX Spectrum 128 game ending screen concept, full-screen 4:3 landscape
+Primary request: Create a triumphant ending scene for the retro game Dillen. Dillen, matching the yellow antennaed worm-like hero in the reference sprite sheet, is happily emerging through the open doorway of an old stone castle into freedom.
+Scene/backdrop: a lush green meadow densely sprinkled with colorful small flowers; the dramatic recognizable peaks of the High Tatras rise in the distance beneath a clear bright blue sky.
+Subject: Dillen is the only character, clearly recognizable from the reference: bright yellow, two short antennae, big friendly face, segmented curved worm body, joyful and proud expression. Show him just outside the open castle door, moving into the meadow.
+Style/medium: authentic polished 1980s ZX Spectrum loading-screen pixel art, hard-edged square pixels, black ink outlines and dithering, vivid limited 15-color Spectrum palette, intentional 8x8 attribute-cell color blocks, no gradients or antialiasing.
+Composition/framing: exact 4:3 landscape composition intended for 256x192 pixels; castle doorway and Dillen in the lower foreground, flower meadow across the bottom, High Tatras across the middle distance, sky above. Reserve a clean dark banner across the very top for the title.
+Lighting/mood: bright sunny celebratory morning, adventurous, warm, victorious.
+Text (verbatim): "CONGRATULATION"
+Typography: render the exact word CONGRATULATION once, centered at the top in large bold blocky yellow retro pixel letters with a dark outline.
+Constraints: preserve Dillen's distinctive yellow antennaed worm design from the reference; exact spelling CONGRATULATION; one hero only; no extra words; no logos; no watermark.
+Avoid: photorealism, smooth vector art, 3D rendering, gradients, antialiasing, modern UI, humans, extra characters, misspelled text.

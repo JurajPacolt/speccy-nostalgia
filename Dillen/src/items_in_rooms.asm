@@ -171,6 +171,8 @@ UseItem:
         jr    z,.UseDynamite
         cp    ITEM_MATCH
         jr    z,.UseMatch
+        cp    ITEM_KEY
+        jr    z,.UseKey
         jr    .UseItemReady
 
 .UseCross:
@@ -190,6 +192,13 @@ UseItem:
 .UseMatch:
         push  hl
         call  CanLightCastleDynamite
+        pop   hl
+        jp    nc,_ItemsActionFailed
+        jr    .UseItemReady
+
+.UseKey:
+        push  hl
+        call  CanUseKeyAtCastleDoor
         pop   hl
         jp    nc,_ItemsActionFailed
 
@@ -244,6 +253,11 @@ IsMatchUsed:
         cp    ITEM_STATE_USED
         ret
 
+IsKeyUsed:
+        ld    a,(ItemStates+ITEM_KEY-1)
+        cp    ITEM_STATE_USED
+        ret
+
 IsCastleWallDestroyed:
         call  IsDynamiteUsed
         ret   nz
@@ -268,11 +282,21 @@ ApplyUsedItemsToRoom:
         ret   nz
 
         call  IsCastleWallDestroyed
-        ret   nz
+        jr    nz,.ApplyCastleDoor
 
         ld    ix,SpriteCastleWallHole
         ld    b,CASTLE_WALL_HOLE_Y
         ld    c,CASTLE_WALL_X
+        ld    de,RoomsAttrCache
+        call  DrawSprite
+
+.ApplyCastleDoor:
+        call  IsKeyUsed
+        ret   nz
+
+        ld    ix,SpriteCastleDoorOpen
+        ld    b,CASTLE_DOOR_Y
+        ld    c,CASTLE_DOOR_X
         ld    de,RoomsAttrCache
         jp    DrawSprite
 
@@ -336,6 +360,38 @@ CanLightCastleDynamite:
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
+; BEGIN - CanUseKeyAtCastleDoor - Is the player beside the closed exit?
+; The caller has already checked Room006.
+; return CF=1 - the door is in reach, CF=0 - the player is too far away.
+CanUseKeyAtCastleDoor:
+        ld    a,(PlayerX)
+        add   a,PLAYER_FOOT_WIDTH+CASTLE_DOOR_USE_RANGE
+        cp    CASTLE_DOOR_X
+        jr    c,.CastleKeyTooFar
+
+        ld    a,(PlayerX)
+        cp    CASTLE_DOOR_X+CASTLE_DOOR_WIDTH*8+CASTLE_DOOR_USE_RANGE
+        jr    nc,.CastleKeyTooFar
+
+        ld    a,(PlayerY)
+        add   a,PLAYER_SPRITE_HEIGHT
+        cp    CASTLE_DOOR_Y
+        jr    c,.CastleKeyTooFar
+
+        ld    a,(PlayerY)
+        cp    CASTLE_DOOR_Y+CASTLE_DOOR_HEIGHT*8
+        jr    nc,.CastleKeyTooFar
+
+        scf
+        ret
+
+.CastleKeyTooFar:
+        or    a
+        ret
+; END - CanUseKeyAtCastleDoor
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
 ; BEGIN - IsCastleWallPixelSolid - Explicit collision for the castle's white
 ; right wall. The upper wall always remains solid; the bottom block becomes
 ; free only after both items are used and the explosion has finished.
@@ -380,6 +436,48 @@ IsCastleWallPixelSolid:
         xor   a
         ret
 ; END - IsCastleWallPixelSolid
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - IsCastleDoorPixelSolid - Keep the complete golden exit closed until
+; the key is used. The room picture itself supplies the visible pixel mask.
+; B - pixel Y.
+; C - pixel X.
+; return NZ - closed door, Z - this routine does not block the pixel.
+IsCastleDoorPixelSolid:
+        push  hl
+        push  de
+
+        call  _ItemsGetActualRoomId
+        cp    CASTLE_ROOM_ID
+        jr    nz,.CastleDoorPixelFree
+        call  IsKeyUsed
+        jr    z,.CastleDoorPixelFree
+
+        ld    a,c
+        cp    CASTLE_DOOR_X
+        jr    c,.CastleDoorPixelFree
+        cp    CASTLE_DOOR_X+CASTLE_DOOR_WIDTH*8
+        jr    nc,.CastleDoorPixelFree
+
+        ld    a,b
+        cp    CASTLE_DOOR_Y
+        jr    c,.CastleDoorPixelFree
+        cp    CASTLE_DOOR_Y+CASTLE_DOOR_HEIGHT*8
+        jr    nc,.CastleDoorPixelFree
+
+        pop   de
+        pop   hl
+        ld    a,1
+        or    a
+        ret
+
+.CastleDoorPixelFree:
+        pop   de
+        pop   hl
+        xor   a
+        ret
+; END - IsCastleDoorPixelSolid
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
@@ -586,6 +684,12 @@ SpriteCastleWallHole:
         defb  CASTLE_WALL_WIDTH,CASTLE_WALL_HOLE_HEIGHT*8
         block CASTLE_WALL_WIDTH*CASTLE_WALL_HOLE_HEIGHT*8,0
         block CASTLE_WALL_WIDTH*CASTLE_WALL_HOLE_HEIGHT,71
+
+; The opened exit is the dark interior left after erasing the golden door.
+SpriteCastleDoorOpen:
+        defb  CASTLE_DOOR_WIDTH,CASTLE_DOOR_HEIGHT*8
+        block CASTLE_DOOR_WIDTH*CASTLE_DOOR_HEIGHT*8,0
+        block CASTLE_DOOR_WIDTH*CASTLE_DOOR_HEIGHT,71
 
 ; A short, bright burst fills exactly the block removed from the castle wall.
 ; The animation routine replaces it with SpriteCastleWallHole on its last tick.

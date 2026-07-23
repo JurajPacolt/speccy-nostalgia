@@ -28,6 +28,13 @@ CASTLE_DYNAMITE_Y          equ 18*8
 CASTLE_ITEM_USE_RANGE      equ 16
 CASTLE_EXPLOSION_FRAMES   equ 12
 
+; The narrow golden exit door is set into the castle's far-left wall.
+CASTLE_DOOR_X              equ 1*8
+CASTLE_DOOR_Y              equ 13*8
+CASTLE_DOOR_WIDTH          equ 1
+CASTLE_DOOR_HEIGHT         equ 7
+CASTLE_DOOR_USE_RANGE      equ 16
+
 ;-------------------------------------------------------------------------------
 ; BEGIN - ShowRoom
 ShowRoom:
@@ -546,7 +553,8 @@ Room006:
         defb  28*8, 160, 0
         defw  SPRITE_STONES
 
-        defb  1*8, 13*8, 0
+        ; The key replaces this closed golden door with a black opening.
+        defb  CASTLE_DOOR_X, CASTLE_DOOR_Y, 0
         defw  SPRITE_EXIT_DOOR
 
         defb  1*8, 11*8, 7

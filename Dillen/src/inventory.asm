@@ -134,6 +134,8 @@ InventoryHandleOpen:
         cp    ITEM_MATCH
         jr    z,.IHO_TryUseItem
         cp    ITEM_DYNAMITE
+        jr    z,.IHO_TryUseItem
+        cp    ITEM_KEY
         jr    nz,.IHO_DropItem
 .IHO_TryUseItem:
         call  UseItem

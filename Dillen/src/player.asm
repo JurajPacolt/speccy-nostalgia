@@ -969,6 +969,10 @@ PlayerPixelSolid:
         call  IsCastleWallPixelSolid
         ret   nz
 
+        ; The exit remains a solid door until the carried key is used beside it.
+        call  IsCastleDoorPixelSolid
+        ret   nz
+
         ld    a,b
         cp    PLAYER_FLOOR_Y
         jr    c,.PlayerPixelInk

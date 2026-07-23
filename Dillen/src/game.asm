@@ -3,6 +3,10 @@
 GameMainLoop:
         call  ResetGame
 .GameMainLoop
+        ld    a,(GameWonState)
+        or    a
+        jr    nz,.GameMainLoopWon
+
         ld    a,(LifeLostState)
         or    a
         jr    nz,.GameMainLoopLifeLost
@@ -20,6 +24,10 @@ GameMainLoop:
         call  PlayerUpdate
         call  PlayerApplyKnockback
         call  PlayerRender
+        call  GameWonCheckDoorEntry
+        ld    a,(GameWonState)
+        or    a
+        jr    nz,.GameMainLoopTick
         call  ScanCursorKeysForRoomSwitch
         call  InventoryScanEnterKey ; ENTER opens the inventory (inventory.asm).
         jr    .GameMainLoopTick
@@ -32,6 +40,11 @@ GameMainLoop:
 .GameMainLoopLifeLost:
         ; Losing a life pauses the game until its message is dismissed.
         call  LifeLostHandle
+        jr    .GameMainLoopTick
+
+.GameMainLoopWon:
+        ; Victory owns the screen permanently after entering the castle exit.
+        call  GameWonHandle
 
 .GameMainLoopTick:
         halt
@@ -63,6 +76,7 @@ ResetGame:
         call  PlayerReset
         call  InventoryReset
         call  LifeLostReset
+        call  GameWonReset
         ret
 ; END - ResetGame
 ;-------------------------------------------------------------------------------
