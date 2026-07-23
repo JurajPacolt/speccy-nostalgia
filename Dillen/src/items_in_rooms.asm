@@ -16,6 +16,7 @@ ITEM_STATE_CARRIED equ 254
 ITEM_STATE_USED    equ 255
 
 ITEM_DRAW_RECORD_SIZE equ 4 ; X, Y, sprite address.
+ITEM_SPRITE_HEIGHT    equ 16
 
 ;-------------------------------------------------------------------------------
 ; BEGIN - ItemsInRooms - Draw items once, immediately after a room is redrawn.
@@ -69,6 +70,13 @@ ResetItems:
         ld    de,ItemStates
         ld    bc,ITEM_COUNT
         ldir
+
+        ; Dropping changes an item's X and Y, so a new game must restore the
+        ; complete placement from the paper map as well as the room states.
+        ld    hl,ItemInitialDrawRecords
+        ld    de,ItemDrawRecords
+        ld    bc,ITEM_COUNT*ITEM_DRAW_RECORD_SIZE
+        ldir
         jp    _ItemsRefreshRoom
 ; END - ResetItems
 ;-------------------------------------------------------------------------------
@@ -81,9 +89,9 @@ ResetItems:
 ; can call it after touching an item.
 CollectItem:
         cp    1
-        jr    c,_ItemsActionFailed
+        jp    c,_ItemsActionFailed
         cp    ITEM_COUNT+1
-        jr    nc,_ItemsActionFailed
+        jp    nc,_ItemsActionFailed
         ld    c,a
 
         call  _ItemsGetActualRoomId
@@ -177,6 +185,27 @@ DropItem:
         jr    nz,_ItemsActionFailed
 
         ld    (hl),b
+
+        ; Point HL at this item's mutable draw record. DrawSprite works on byte
+        ; columns, therefore keep X on the same grid while aligning the bottom
+        ; of the 16-pixel item with the player's feet.
+        ld    a,c
+        dec   a
+        add   a,a
+        add   a,a
+        ld    e,a
+        ld    d,0
+        ld    hl,ItemDrawRecords
+        add   hl,de
+
+        ld    a,(PlayerX)
+        and   %11111000
+        ld    (hl),a
+        inc   hl
+        ld    a,(PlayerY)
+        add   a,PLAYER_SPRITE_HEIGHT-ITEM_SPRITE_HEIGHT
+        ld    (hl),a
+
         call  _ItemsRefreshRoom
         scf
         ret
@@ -234,7 +263,7 @@ ItemUseRooms:
 
 ; X, Y, sprite. Positions follow the relative placement in the paper rooms and
 ; every 16x16 footprint stays in empty cells immediately above the terrain.
-ItemDrawRecords:
+ItemInitialDrawRecords:
         defb  25*8, 18*8
         defw  SpriteItemPickaxe
         defb  14*8, 17*8
@@ -245,6 +274,10 @@ ItemDrawRecords:
         defw  SpriteItemDynamite
         defb  12*8, 18*8
         defw  SpriteItemKey
+
+; Mutable X, Y and sprite records. ResetItems restores the initial placement.
+ItemDrawRecords:
+        block  ITEM_COUNT*ITEM_DRAW_RECORD_SIZE,0
 
 ; Names of the items, for the inventory window. Indexed by ID-1.
 ItemNames:
