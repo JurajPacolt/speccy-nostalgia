@@ -992,30 +992,12 @@ AYMusicDrumTimer:
         defb  0
 ;-------------------------------------------------------------------------------
 
-; One slow triangle sweep of the melody vibrato, in vibrato units.
-AYMusicVibrato:
-        defb  0,1,1,0,0,-1,-1,0
-;-------------------------------------------------------------------------------
-
 ; AY periods for C2..B5 at the 1.7734 MHz ZX Spectrum AY clock.
 AYMusicNotePeriods:
         defw  1695,1599,1510,1425,1345,1270,1198,1131,1068,1008,951,898
         defw  847,800,755,712,673,635,599,566,534,504,476,449
         defw  424,400,377,356,336,317,300,283,267,252,238,224
         defw  212,200,189,178,168,159,150,141,133,126,119,112
-
-; A compact major-chord rise: C, F, G and the final C resolution. Short silent
-; gaps articulate the first three hits; the last chord rings long enough to
-; bridge cleanly into the game.
-AYMusicStartFanfareData:
-        defb  5,N_C4,N_E4,N_G4,13
-        defb  2,N_REST,N_REST,N_REST,0
-        defb  5,N_F4,N_A4,N_C5,13
-        defb  2,N_REST,N_REST,N_REST,0
-        defb  6,N_G4,N_B4,N_D5,14
-        defb  2,N_REST,N_REST,N_REST,0
-        defb  20,N_C5,N_E5,N_G5,15
-        defb  0
 
 ; Thirty-two bars = 51.2 seconds. A A B A, where the second A closes with the
 ; run that leads into the bridge.
@@ -1556,4 +1538,25 @@ AYMusicIM2Handler:
         pop   af
         ei
         reti
+;-------------------------------------------------------------------------------
+
+; Static audio data can safely live after the fixed IM2 handler. Keeping it here
+; leaves the ordinary game region below the vector table at 0xF000.
+
+; One slow triangle sweep of the melody vibrato, in vibrato units.
+AYMusicVibrato:
+        defb  0,1,1,0,0,-1,-1,0
+
+; A compact major-chord rise: C, F, G and the final C resolution. Short silent
+; gaps articulate the first three hits; the last chord rings long enough to
+; bridge cleanly into the game.
+AYMusicStartFanfareData:
+        defb  5,N_C4,N_E4,N_G4,13
+        defb  2,N_REST,N_REST,N_REST,0
+        defb  5,N_F4,N_A4,N_C5,13
+        defb  2,N_REST,N_REST,N_REST,0
+        defb  6,N_G4,N_B4,N_D5,14
+        defb  2,N_REST,N_REST,N_REST,0
+        defb  20,N_C5,N_E5,N_G5,15
+        defb  0
 ;-------------------------------------------------------------------------------

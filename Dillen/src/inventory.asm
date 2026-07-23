@@ -139,7 +139,9 @@ InventoryHandleOpen:
         jr    nz,.IHO_DropItem
 .IHO_TryUseItem:
         call  UseItem
-        jr    c,.IHO_Close
+        jr    nc,.IHO_DropItem
+        call  BeeperSfxUseItem
+        jr    .IHO_Close
 .IHO_DropItem:
         ld    a,c
         call  DropItem
@@ -269,7 +271,7 @@ InventoryOpen:
 
         call  _INV_DrawWindow
         call  _INV_DrawContents
-        ret
+        jp    BeeperSfxInventoryOpen
 ; END - InventoryOpen
 ;-------------------------------------------------------------------------------
 
@@ -279,6 +281,7 @@ InventoryOpen:
 InventoryClose:
         xor   a
         ld    (_INV_State),a
+        call  BeeperSfxInventoryClose
         call  ItemsForceRedraw
         call  ResetTorches
         call  ResetStars

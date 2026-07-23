@@ -1,0 +1,20 @@
+{
+  "title": "Dillen loading screen",
+  "concept": "Dillen framed by a cold castle arch, facing the lit exit.",
+  "dimensions": [
+    256,
+    192
+  ],
+  "format": "ZX Spectrum SCR",
+  "byte_length": 6912,
+  "attribute_rule": "bright ink on black; one ink per 8x8 cell",
+  "exact_copy": [
+    "DILLEN",
+    "ESCAPE FROM UNDERGROUND",
+    "LOADING...",
+    "PLEASE WAIT"
+  ],
+  "source_sprite": "src\\player_sprites.asm",
+  "preview": "gfx\\dillen-loading-screen.png",
+  "screen": "src\\binary\\dillen-loading.scr"
+}

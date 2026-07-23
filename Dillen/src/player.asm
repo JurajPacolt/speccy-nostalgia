@@ -340,7 +340,11 @@ PlayerUpdate:
         ; started the fall over an edge.
         ld    hl,PlayerAnimationTick
         inc   (hl)
-        ret
+        ld    a,(hl)
+        dec   a ; Sound immediately, then once per eight successful move ticks.
+        and   7
+        ret   nz
+        jp    BeeperSfxFootstep
 
 .PlayerUpdateIdle:
         xor   a
@@ -353,6 +357,7 @@ PlayerUpdate:
 ;-------------------------------------------------------------------------------
 ; Start a jump. The direction is fixed at take-off for a clean jump arc.
 PlayerStartJump:
+        call  BeeperSfxJump
         ld    a,PLAYER_STATE_JUMP
         ld    (PlayerState),a
         xor   a

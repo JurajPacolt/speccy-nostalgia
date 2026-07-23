@@ -44,6 +44,9 @@
         include "animations_in_rooms.asm" ; Individual animations in rooms.
         include "death_in_room.asm" ; The Death with the scythe, in room 7.
         include "ay_music.asm" ; Cheerful AY background music and IM2 player.
+        include "beeper_sfx.asm" ; Short 1-bit movement and inventory effects.
 
 ; COMPILER OUTPUT
+@ProgramEnd:
         savesna "Dillen.sna", @EntryPoint
+        include "tape_loader.asm" ; Autorun BASIC, loading screen and game TAP.

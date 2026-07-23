@@ -21,6 +21,10 @@ For editing use, for example (or vscode):
 3.	ATOM plugin "language-assembler-sjasmplus"
 4.	ATOM plugin "language-z80asm"
 
+Every build creates both `Dillen.sna` and the self-starting `Dillen.tap`.
+Load the tape version with `LOAD ""`; its BASIC loader shows the dedicated
+loading screen, loads the game and starts it automatically.
+
 ## Player controls
 
 - `Z` / `X` (also `O` / `P`) or Kempston left / right: walk
@@ -30,4 +34,10 @@ The 16x24 player animation and background masks are generated with:
 
 ```powershell
 py -3 .\tools\generate_player_assets.py
+```
+
+The TAP loading screen and its PNG preview are generated with:
+
+```powershell
+py -3 .\tools\generate_loading_screen.py
 ```
