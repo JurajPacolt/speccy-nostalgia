@@ -8,20 +8,20 @@
 @EntryPoint:
         di
 
+        call  InitAYMusicIM2
+        call  TitleScreenShow
+
         call  ClearScreenToBlack
-
         call  DrawBorder
-
         call  InitGamePanel
-
         call  PlayerBuildWalkCache
 
-        call  InitAYMusicIM2
         jp    GameMainLoop
 
 ; INCLUDES
         include "common.asm" ; Common procedures.
         include "font_4x8.asm" ; Font 4x8 and her printing.
+        include "title_screen.asm" ; Animated title, controls and start input.
         include "kempston_joystick.asm"
         include "keyboard.asm"
         include "rolling.asm"
