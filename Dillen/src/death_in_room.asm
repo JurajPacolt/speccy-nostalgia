@@ -14,6 +14,8 @@ DEATH_Y          equ 104
 ; Size of the Death in the characters.
 DEATH_W          equ 7
 DEATH_H          equ 7
+; Touching the Death takes half of the player's full energy.
+DEATH_DAMAGE     equ PLAYER_ENERGY_MAX/2
 ; Frames for one image of the Death, she is moving slowly and heavily.
 DEATH_DELAY      equ 8
 ; Length of the sequence of her movement, it must be a power of two.
@@ -25,6 +27,8 @@ DEATH_SEQ_LENGTH equ 8
 ;                       jaw and her skull is flaring up while she guards the
 ;                       path with the scythe.
 DeathInRoom:
+        call  _DeathUpdateTouchLatch
+
         ; The Death is drawn again always, when the showed room is changed. She
         ; must stand there at once, before the stars are twinkling.
         ld    a,(ActualRoomInMap)
@@ -63,6 +67,7 @@ _Death_Draw:
         ld    e,(hl)
         inc   hl
         ld    d,(hl)
+        ld    (_Death_current_sprite),de
         push  de
         pop   ix ; IX - actual image of the Death.
 
@@ -74,6 +79,146 @@ _Death_Draw:
         ld    de,22528
         jp    PlayerDrawDynamicSprite
 ; END - DeathInRoom
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - IsDeathPixelSolid - Is one player collision probe inside the Death?
+; The first contact also hurts the player; further probes are harmless until he
+; moves away from her.
+; B - pixel Y.
+; C - pixel X.
+; return NZ - the Death occupies the pixel.
+IsDeathPixelSolid:
+        push  bc
+        push  hl
+        push  de
+
+        ld    hl,RoomsMap
+        ld    a,(ActualRoomInMap)
+        ld    e,a
+        ld    d,0
+        add   hl,de
+        ld    a,(hl)
+        cp    7
+        jr    nz,.DeathPixelFree
+
+        ld    a,c
+        cp    DEATH_X
+        jr    c,.DeathPixelFree
+        cp    DEATH_X+DEATH_W*8
+        jr    nc,.DeathPixelFree
+
+        ld    a,b
+        cp    DEATH_Y
+        jr    c,.DeathPixelFree
+        cp    DEATH_Y+DEATH_H*8
+        jr    nc,.DeathPixelFree
+
+        ; Transparent pixels of the 56x56 sprite are not collision. This keeps
+        ; the empty space below the scythe open for the player.
+        ld    a,c
+        sub   DEATH_X
+        ld    (_Death_probe_x),a
+        ld    a,b
+        sub   DEATH_Y
+        ld    e,a
+        ld    d,0
+        ld    h,d
+        ld    l,e
+        add   hl,hl
+        add   hl,hl
+        add   hl,hl
+        or    a
+        sbc   hl,de ; Seven bytes in one 56-pixel sprite row.
+
+        ld    a,(_Death_probe_x)
+        rrca
+        rrca
+        rrca
+        and   7
+        ld    e,a
+        ld    d,0
+        add   hl,de
+        ld    de,(_Death_current_sprite)
+        inc   de
+        inc   de ; Skip the sprite's width and height.
+        add   hl,de
+        ld    b,(hl)
+
+        ld    a,(_Death_probe_x)
+        and   7
+        ld    e,a
+        ld    d,0
+        ld    hl,PlayerPixelMasks
+        add   hl,de
+        ld    a,(hl)
+        and   b
+        jr    z,.DeathPixelFree
+
+        ld    a,(_Death_touching_player)
+        or    a
+        jr    nz,.DeathPixelSolid
+        ld    a,1
+        ld    (_Death_touching_player),a
+
+        ; Throw him away from the side of the Death which he touched.
+        ld    a,(PlayerX)
+        add   a,PLAYER_FOOT_WIDTH/2
+        cp    DEATH_X+(DEATH_W*8)/2
+        ld    a,254
+        jr    c,.DeathKnockbackReady
+        ld    a,2
+.DeathKnockbackReady:
+        call  PlayerQueueKnockback
+
+        ld    a,DEATH_DAMAGE
+        call  PlayerLoseEnergyAmount
+
+.DeathPixelSolid:
+        pop   de
+        pop   hl
+        pop   bc
+        ld    a,1
+        or    a
+        ret
+
+.DeathPixelFree:
+        pop   de
+        pop   hl
+        pop   bc
+        xor   a
+        ret
+; END - IsDeathPixelSolid
+;-------------------------------------------------------------------------------
+
+; Keep the touch latch armed while the player's rectangle touches or overlaps
+; the Death. It is cleared only after a real gap opens between them.
+_DeathUpdateTouchLatch:
+        ld    a,(PlayerX)
+        add   a,PLAYER_FOOT_WIDTH
+        cp    DEATH_X
+        jr    c,.DeathTouchEnded
+
+        ld    a,(PlayerX)
+        cp    DEATH_X+DEATH_W*8
+        jr    c,.DeathTouchVertical
+        jr    nz,.DeathTouchEnded
+
+.DeathTouchVertical:
+        ld    a,(PlayerY)
+        add   a,PLAYER_SPRITE_HEIGHT
+        cp    DEATH_Y
+        jr    c,.DeathTouchEnded
+
+        ld    a,(PlayerY)
+        cp    DEATH_Y+DEATH_H*8
+        ret   c
+        ret   z
+
+.DeathTouchEnded:
+        xor   a
+        ld    (_Death_touching_player),a
+        ret
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
@@ -107,8 +252,21 @@ _Death_CellFree:
 ResetDeath:
         ld    a,255 ; It's not a valid room in the map.
         ld    (_Death_room),a
+        ld    hl,SpriteDeath1
+        ld    (_Death_current_sprite),hl
         ret
 ; END - ResetDeath
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - ResetDeathContact - Forget damage from contact at the start of a game.
+; Ordinary screen redraws keep the latch, so closing a modal window while still
+; standing by the Death cannot immediately hurt the player again.
+ResetDeathContact:
+        xor   a
+        ld    (_Death_touching_player),a
+        ret
+; END - ResetDeathContact
 ;-------------------------------------------------------------------------------
 
 ; Room, in which is the Death actually drawn. 255 - none.
@@ -121,6 +279,17 @@ _Death_step:
 
 ; Counter of the frames between two images of the Death.
 _Death_delay:
+        defb  0
+
+; One means the current continuous contact has already caused damage.
+_Death_touching_player:
+        defb  0
+
+; The animated frame whose visible pixels form the current collision mask.
+_Death_current_sprite:
+        defw  SpriteDeath1
+
+_Death_probe_x:
         defb  0
 
 ; Sequence of her idle movement. She shifts her weight, breathes, tilts her

@@ -18,6 +18,7 @@ GameMainLoop:
         call  StarOnBackground
         call  AnimationsInRooms
         call  PlayerUpdate
+        call  PlayerApplyKnockback
         call  PlayerRender
         call  ScanCursorKeysForRoomSwitch
         call  InventoryScanEnterKey ; ENTER opens the inventory (inventory.asm).
@@ -58,6 +59,7 @@ ResetGame:
         call  ResetAnimationsInRooms
         call  ResetWind
         call  ResetDeath
+        call  ResetDeathContact
         call  PlayerReset
         call  InventoryReset
         call  LifeLostReset
@@ -66,21 +68,37 @@ ResetGame:
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
-; BEGIN - PlayerLoseEnergy - Remove one point of energy. Spending the last point
-; also removes one life and refills the energy for the remaining lives.
+; BEGIN - PlayerLoseEnergy - Remove one point of energy.
 PlayerLoseEnergy:
+        ld    a,1
+        jp    PlayerLoseEnergyAmount
+; END - PlayerLoseEnergy
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - PlayerLoseEnergyAmount - Remove A points of energy. If there is not
+; enough energy, or the loss spends the last point, remove one life and refill
+; the energy for the remaining lives.
+PlayerLoseEnergyAmount:
+        or    a
+        ret   z
+        ld    b,a
+
         ld    a,(PlayerLives)
         or    a
         ret   z ; The player is already dead.
 
         ld    hl,PlayerEnergy
         ld    a,(hl)
-        or    a
-        jr    z,.PlayerLoseEnergyLife
-        dec   (hl)
+        cp    b
+        jr    c,.PlayerLoseEnergyLife
+        sub   b
+        ld    (hl),a
         ret   nz
 
 .PlayerLoseEnergyLife:
+        xor   a
+        ld    (PlayerEnergy),a
         ld    hl,PlayerLives
         dec   (hl)
         jr    z,.PlayerLoseEnergyShow ; No energy is restored after the last life.
@@ -89,7 +107,7 @@ PlayerLoseEnergy:
         ld    (PlayerEnergy),a
 .PlayerLoseEnergyShow:
         jp    LifeLostShow
-; END - PlayerLoseEnergy
+; END - PlayerLoseEnergyAmount
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------

@@ -52,6 +52,7 @@ PlayerReset:
         ld    (PlayerJumpPhase),a
         ld    (PlayerJumpDirection),a
         ld    (PlayerJumpLatch),a
+        ld    (PlayerKnockbackPending),a
         ld    (PlayerBackgroundValid),a
         ld    a,255
         ld    (PlayerDrawnRoom),a
@@ -386,6 +387,42 @@ PlayerBeginFall:
         ld    (PlayerJumpPhase),a
         xor   a
         ld    (PlayerJumpDirection),a
+        ret
+
+;-------------------------------------------------------------------------------
+; Queue a jump-like knockback after the current collision probe has finished.
+; A - horizontal direction: 254/-2 for left, 2 for right.
+PlayerQueueKnockback:
+        ld    (PlayerKnockbackDirection),a
+        ld    a,1
+        ld    (PlayerKnockbackPending),a
+        ret
+
+; Apply a queued knockback after PlayerUpdate, where walking or landing can no
+; longer overwrite the new jump state.
+PlayerApplyKnockback:
+        ld    a,(PlayerKnockbackPending)
+        or    a
+        ret   z
+        xor   a
+        ld    (PlayerKnockbackPending),a
+        ld    (PlayerJumpPhase),a
+        ld    (PlayerIdleTick),a
+        ld    (PlayerAnimationTick),a
+
+        ld    a,PLAYER_STATE_JUMP
+        ld    (PlayerState),a
+        ld    a,1
+        ld    (PlayerJumpLatch),a
+
+        ld    a,(PlayerKnockbackDirection)
+        ld    (PlayerJumpDirection),a
+        cp    254
+        ld    a,1
+        jr    nz,.PlayerApplyKnockbackDirectionReady
+        xor   a
+.PlayerApplyKnockbackDirectionReady:
+        ld    (PlayerDirection),a
         ret
 
 ;-------------------------------------------------------------------------------
@@ -736,6 +773,11 @@ PlayerLineSolid:
 ; B - Yos, C - Xos, both in pixels.
 ; return NZ - the pixel is solid.
 PlayerPixelSolid:
+        ; The Death is a dynamic room sprite, but unlike the other animations
+        ; she is a solid obstacle which hurts the player on first contact.
+        call  IsDeathPixelSolid
+        ret   nz
+
         ld    a,b
         cp    PLAYER_FLOOR_Y
         jr    c,.PlayerPixelInk
@@ -1680,6 +1722,8 @@ PlayerFrameIndex:              defb 0
 PlayerJumpPhase:               defb 0
 PlayerJumpDirection:           defb 0
 PlayerJumpLatch:               defb 0
+PlayerKnockbackPending:        defb 0
+PlayerKnockbackDirection:      defb 0
 PlayerVerticalDelta:           defb 0
 PlayerLandingProbe:            defb 0
 PlayerLandingEnd:              defb 0
