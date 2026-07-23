@@ -3,6 +3,10 @@
 GameMainLoop:
         call  ResetGame
 .GameMainLoop
+        ld    a,(_INV_State)
+        or    a
+        jr    nz,.GameMainLoopInventory
+
         call  ShowRoom
         call  ShowGamePanel
         call  TorchesInRooms ; Before the stars, they must know about the fire.
@@ -12,6 +16,14 @@ GameMainLoop:
         call  PlayerUpdate
         call  PlayerRender
         call  ScanCursorKeysForRoomSwitch
+        call  InventoryScanEnterKey ; ENTER opens the inventory (inventory.asm).
+        jr    .GameMainLoopTick
+
+.GameMainLoopInventory:
+        ; The window is a modal pause: nothing above runs while it is open.
+        call  InventoryHandleOpen
+
+.GameMainLoopTick:
         halt
         jr    .GameMainLoop
 ; END - GameMainLoop
@@ -37,6 +49,7 @@ ResetGame:
         call  ResetWind
         call  ResetDeath
         call  PlayerReset
+        call  InventoryReset
         ret
 ; END - ResetGame
 ;-------------------------------------------------------------------------------

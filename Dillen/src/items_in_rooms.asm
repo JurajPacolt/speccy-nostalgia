@@ -156,6 +156,42 @@ IsItemCarried:
 ; END - IsItemCarried
 ;-------------------------------------------------------------------------------
 
+;-------------------------------------------------------------------------------
+; BEGIN - DropItem - Move a carried item out of the inventory, into the room the
+; player is currently standing in.
+; A - item ID (ITEM_*).
+; return CF=1 - dropped, CF=0 - invalid ID or the item is not carried.
+DropItem:
+        cp    1
+        jr    c,_ItemsActionFailed
+        cp    ITEM_COUNT+1
+        jr    nc,_ItemsActionFailed
+        ld    c,a
+
+        call  _ItemsGetActualRoomId
+        ld    b,a ; The room he is standing in now.
+        ld    a,c
+        call  _ItemsGetStateAddress
+        ld    a,(hl)
+        cp    ITEM_STATE_CARRIED
+        jr    nz,_ItemsActionFailed
+
+        ld    (hl),b
+        call  _ItemsRefreshRoom
+        scf
+        ret
+; END - DropItem
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - ItemsForceRedraw - Public entry point to force the room and her items
+; to be drawn again from scratch, e.g. after the inventory window has painted
+; over the game field.
+ItemsForceRedraw:
+        jp    _ItemsRefreshRoom
+; END - ItemsForceRedraw
+;-------------------------------------------------------------------------------
+
 _ItemsActionFailed:
         or    a ; Clear carry.
         ret
@@ -209,6 +245,25 @@ ItemDrawRecords:
         defw  SpriteItemDynamite
         defb  12*8, 18*8
         defw  SpriteItemKey
+
+; Names of the items, for the inventory window. Indexed by ID-1.
+ItemNames:
+        defw  _ItemNamePickaxe
+        defw  _ItemNameCross
+        defw  _ItemNameMatch
+        defw  _ItemNameDynamite
+        defw  _ItemNameKey
+
+_ItemNamePickaxe:
+        defb  "Pickaxe", 0
+_ItemNameCross:
+        defb  "Cross", 0
+_ItemNameMatch:
+        defb  "Match", 0
+_ItemNameDynamite:
+        defb  "Dynamite", 0
+_ItemNameKey:
+        defb  "Key", 0
 
 ; Mutable item locations/states. ResetItems initializes this table.
 ItemStates:

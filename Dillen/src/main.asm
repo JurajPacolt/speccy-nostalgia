@@ -30,6 +30,7 @@
         include "player.asm" ; Main character, controls and masked animation.
         include "rooms.asm" ; Showing rooms.
         include "items_in_rooms.asm" ; Collectible and usable items from the map.
+        include "inventory.asm" ; Carrying, picking up and dropping items.
         include "game.asm" ; Here is main game loop.
         include "game_field.asm" ; Game border graphics.
         include "game_info_panel.asm" ; Info panel for game.

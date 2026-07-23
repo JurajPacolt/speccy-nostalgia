@@ -11,6 +11,12 @@ ShowRoom:
         ld    (hl),a ; If not write actual room to last showed.
 
         push  af
+        ; The saved bytes under the player belong to the picture which is about
+        ; to be erased. This matters also when the same room is redrawn after
+        ; collecting an item: restoring that old background would draw the item
+        ; back onto the screen.
+        xor   a
+        ld    (PlayerBackgroundValid),a
         call  CleanGameField ; Cleaning game field.
         ld    a,0
         call  SetGameFieldAttributes
