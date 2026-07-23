@@ -131,6 +131,21 @@ AIR_ROOM3_STATE_FALL    equ 0
 AIR_ROOM3_STATE_SPLASH  equ 1
 AIR_ROOM3_STATE_PAUSE   equ 2
 
+;-------------------------------------------------------------------------------
+; BEGIN - ResetAnimationsInRooms - Restore room animations to a new-game state.
+ResetAnimationsInRooms:
+        xor   a
+        ld    (_AIR_Room3_state),a
+        ld    (_AIR_Room3_image),a
+        ld    (_AIR_Room3_pause),a
+        ld    (_AIR_Room3_delay),a
+        ld    (_AIR_Room3_hit_player),a
+        ld    a,AIR_ROOM3_DROP_Y
+        ld    (_AIR_Room3_pos),a
+        ret
+; END - ResetAnimationsInRooms
+;-------------------------------------------------------------------------------
+
 _AIR_Room3:
         ld    a,(_AIR_Room3_state)
         cp    AIR_ROOM3_STATE_SPLASH
@@ -170,6 +185,9 @@ _AIR_R3_Fall:
         ld    c,AIR_ROOM3_DROP_X
         ld    d,1
         call  _AIR_SaveBackground
+
+        ; One falling drop can hurt the player only once.
+        call  _AIR_R3_HitPlayer
 
         ; Draw the drop to her new position.
         ld    ix,SPRITE_DROP
@@ -248,9 +266,46 @@ _AIR_R3_Pause:
         ret   nz
         xor   a
         ld    (_AIR_Room3_delay),a
+        ld    (_AIR_Room3_hit_player),a
         ld    a,AIR_ROOM3_STATE_FALL
         ld    (_AIR_Room3_state),a
         ret
+
+; Is the falling 8x8 drop overlapping the player's 16x24 bounding box?
+_AIR_R3_HitPlayer:
+        ld    a,(_AIR_Room3_hit_player)
+        or    a
+        ret   nz
+
+        ; Player's left edge must be left of the drop's right edge.
+        ld    a,(PlayerX)
+        cp    AIR_ROOM3_DROP_X+8
+        ret   nc
+
+        ; Player's right edge must be right of the drop's left edge.
+        add   a,PLAYER_FOOT_WIDTH
+        cp    AIR_ROOM3_DROP_X
+        ret   c
+        ret   z
+
+        ; Player's top edge must be above the drop's bottom edge.
+        ld    a,(_AIR_Room3_pos)
+        add   a,8
+        ld    b,a
+        ld    a,(PlayerY)
+        cp    b
+        ret   nc
+
+        ; Player's bottom edge must be below the drop's top edge.
+        add   a,PLAYER_SPRITE_HEIGHT
+        ld    hl,_AIR_Room3_pos
+        cp    (hl)
+        ret   c
+        ret   z
+
+        ld    a,1
+        ld    (_AIR_Room3_hit_player),a
+        jp    PlayerLoseEnergy
 
 _AIR_R3_SaveSplash:
         ld    ix,_AIR_Room3_splash_buffer
@@ -279,6 +334,9 @@ _AIR_Room3_pause:
         defb  0
 
 _AIR_Room3_delay:
+        defb  0
+
+_AIR_Room3_hit_player:
         defb  0
 
 _AIR_Room3_buffer:

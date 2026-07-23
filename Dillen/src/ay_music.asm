@@ -25,6 +25,13 @@ AY_STEPS_PER_PATTERN   equ 16
 AY_ORDER_LENGTH        equ 32
 AY_CHORD_MINOR         equ 128
 
+; Keep the IM2 table and handler well above the growing game/music data. Every
+; byte in the 257-byte table points to the same 0xF1F1 handler address.
+AY_IM2_VECTOR_HIGH     equ 0xF0
+AY_IM2_HANDLER_BYTE    equ 0xF1
+AY_IM2_VECTOR_ADDRESS  equ 0xF000
+AY_IM2_HANDLER_ADDRESS equ 0xF1F1
+
 AY_DRUM_NONE           equ 0
 AY_DRUM_KICK           equ 1
 AY_DRUM_SNARE          equ 2
@@ -103,7 +110,7 @@ AY_SHIMMER_DELAY       equ 8
 ; EntryPoint already disabled interrupts before this routine is called.
 InitAYMusicIM2:
         call  AYMusicInit
-        ld    a,190 ; High byte of the IM2 vector table at 0xBE00.
+        ld    a,AY_IM2_VECTOR_HIGH
         ld    i,a
         im    2
         ei
@@ -1112,13 +1119,16 @@ AYMusicPattern11:
         defb  N_HOLD,        N_HOLD,N_G3
 
 ;-------------------------------------------------------------------------------
-; The vector table covers every possible byte supplied by the floating bus.
-; Each vector resolves to 0xBFBF, where the handler is assembled.
-        org   0xBE00
-AYMusicIM2VectorTable:
-        defs  257,0xBF
+; The ordinary game and music data must never grow into the reserved IM2 area.
+        assert $ <= AY_IM2_VECTOR_ADDRESS
 
-        org   0xBFBF
+; The vector table covers every possible byte supplied by the floating bus.
+; Each vector resolves to AY_IM2_HANDLER_ADDRESS, where the handler is assembled.
+        org   AY_IM2_VECTOR_ADDRESS
+AYMusicIM2VectorTable:
+        defs  257,AY_IM2_HANDLER_BYTE
+
+        org   AY_IM2_HANDLER_ADDRESS
 AYMusicIM2Handler:
         push  af
         push  bc

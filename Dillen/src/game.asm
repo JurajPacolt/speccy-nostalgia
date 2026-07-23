@@ -3,6 +3,10 @@
 GameMainLoop:
         call  ResetGame
 .GameMainLoop
+        ld    a,(LifeLostState)
+        or    a
+        jr    nz,.GameMainLoopLifeLost
+
         ld    a,(_INV_State)
         or    a
         jr    nz,.GameMainLoopInventory
@@ -22,6 +26,11 @@ GameMainLoop:
 .GameMainLoopInventory:
         ; The window is a modal pause: nothing above runs while it is open.
         call  InventoryHandleOpen
+        jr    .GameMainLoopTick
+
+.GameMainLoopLifeLost:
+        ; Losing a life pauses the game until its message is dismissed.
+        call  LifeLostHandle
 
 .GameMainLoopTick:
         halt
@@ -46,12 +55,41 @@ ResetGame:
         call  ResetItems
         call  ResetTorches
         call  ResetStars
+        call  ResetAnimationsInRooms
         call  ResetWind
         call  ResetDeath
         call  PlayerReset
         call  InventoryReset
+        call  LifeLostReset
         ret
 ; END - ResetGame
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - PlayerLoseEnergy - Remove one point of energy. Spending the last point
+; also removes one life and refills the energy for the remaining lives.
+PlayerLoseEnergy:
+        ld    a,(PlayerLives)
+        or    a
+        ret   z ; The player is already dead.
+
+        ld    hl,PlayerEnergy
+        ld    a,(hl)
+        or    a
+        jr    z,.PlayerLoseEnergyLife
+        dec   (hl)
+        ret   nz
+
+.PlayerLoseEnergyLife:
+        ld    hl,PlayerLives
+        dec   (hl)
+        jr    z,.PlayerLoseEnergyShow ; No energy is restored after the last life.
+
+        ld    a,PLAYER_ENERGY_MAX
+        ld    (PlayerEnergy),a
+.PlayerLoseEnergyShow:
+        jp    LifeLostShow
+; END - PlayerLoseEnergy
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
