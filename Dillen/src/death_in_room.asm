@@ -14,6 +14,8 @@ DEATH_Y          equ 104
 ; Size of the Death in the characters.
 DEATH_W          equ 7
 DEATH_H          equ 7
+; The cross works from a short distance around her visible 56x56 area.
+DEATH_USE_RANGE  equ 16
 ; Touching the Death takes half of the player's full energy.
 DEATH_DAMAGE     equ PLAYER_ENERGY_MAX/2
 ; Frames for one image of the Death, she is moving slowly and heavily.
@@ -58,6 +60,12 @@ _Death_Move:
         ld    (hl),a
 
 _Death_Draw:
+        call  IsCrossUsed
+        jr    nz,.DeathDrawMoving
+        ld    de,SpriteDeathScared
+        jr    .DeathDrawReady
+
+.DeathDrawMoving:
         ld    a,(_Death_step)
         add   a,a ; Two bytes for the address of one image.
         ld    e,a
@@ -67,6 +75,7 @@ _Death_Draw:
         ld    e,(hl)
         inc   hl
         ld    d,(hl)
+.DeathDrawReady:
         ld    (_Death_current_sprite),de
         push  de
         pop   ix ; IX - actual image of the Death.
@@ -101,6 +110,11 @@ IsDeathPixelSolid:
         ld    a,(hl)
         cp    7
         jr    nz,.DeathPixelFree
+
+        ; Once frightened, the Death no longer guards the exit. Her whole
+        ; figure is visual only, so the player can walk straight through.
+        call  IsCrossUsed
+        jr    z,.DeathPixelFree
 
         ld    a,c
         cp    DEATH_X
@@ -189,6 +203,43 @@ IsDeathPixelSolid:
         xor   a
         ret
 ; END - IsDeathPixelSolid
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - CanUseCrossAtDeath - Is the player close enough to raise the cross?
+; The room itself is validated by UseItem. This checks a 16-pixel interaction
+; margin around the Death and requires vertical overlap with her.
+; return CF=1 - close enough, CF=0 - too far away.
+CanUseCrossAtDeath:
+        ; Player's right edge plus the interaction margin must reach her.
+        ld    a,(PlayerX)
+        add   a,PLAYER_FOOT_WIDTH+DEATH_USE_RANGE
+        cp    DEATH_X
+        jr    c,.CrossTooFar
+
+        ; His left edge must not be beyond her right interaction margin.
+        ld    a,(PlayerX)
+        cp    DEATH_X+DEATH_W*8+DEATH_USE_RANGE
+        jr    nc,.CrossTooFar
+
+        ; His bottom must reach the top of her figure.
+        ld    a,(PlayerY)
+        add   a,PLAYER_SPRITE_HEIGHT
+        cp    DEATH_Y
+        jr    c,.CrossTooFar
+
+        ; His top must remain above the bottom of her figure.
+        ld    a,(PlayerY)
+        cp    DEATH_Y+DEATH_H*8
+        jr    nc,.CrossTooFar
+
+        scf
+        ret
+
+.CrossTooFar:
+        or    a
+        ret
+; END - CanUseCrossAtDeath
 ;-------------------------------------------------------------------------------
 
 ; Keep the touch latch armed while the player's rectangle touches or overlaps
@@ -319,6 +370,79 @@ _Death_Sequence:
 ; other bone is coming to them, so she can flare up with the red color, without
 ; a clash with the white bones around her. The gently swaying blade keeps
 ; dedicated cells away from the bones, so she remains cold cyan steel.
+
+;----- Frightened - The cross has taken her scythe and made her eyes bulge.
+; The image is only four characters wide. A forced room redraw removes every
+; pixel of the old seven-character scythe before this smaller figure is drawn.
+SpriteDeathScared:
+        defb    4,56
+
+SpriteDataDeathScared:
+        defb    %00000000, %00000000, %00000000, %00000000
+        defb    %00000000, %00000000, %00000000, %00000000
+        defb    %00000000, %00000000, %00000000, %00000000
+        defb    %00000000, %00111000, %00111000, %00000000
+        defb    %00000000, %01111100, %01111100, %00000000
+        defb    %00000000, %11000110, %11000110, %00000000
+        defb    %00000000, %11010110, %11010110, %00000000
+        defb    %00000000, %11010110, %11010110, %00000000
+        defb    %00000000, %11000110, %11000110, %00000000
+        defb    %00000000, %01111100, %01111100, %00000000
+        defb    %00000000, %00111000, %00111000, %00000000
+        defb    %00000000, %01111111, %11111110, %00000000
+        defb    %00000000, %11111111, %11111111, %00000000
+        defb    %00000000, %11100000, %00000111, %00000000
+        defb    %00000000, %11100011, %11000111, %00000000
+        defb    %00000000, %01110001, %10001110, %00000000
+        defb    %00000000, %00111000, %00011100, %00000000
+        defb    %00000000, %00011111, %11111000, %00000000
+        defb    %00000000, %00011010, %01011000, %00000000
+        defb    %00000000, %00011111, %11111000, %00000000
+        defb    %00000000, %00001111, %11110000, %00000000
+        defb    %00000000, %00000000, %10100000, %00000000
+        defb    %00000000, %00000000, %10100000, %00000000
+        defb    %00000000, %00000000, %10100000, %00000000
+        defb    %00000000, %11111000, %11100111, %11000000
+        defb    %00000000, %11000111, %11111000, %11000000
+        defb    %00000000, %10011100, %11000111, %00100000
+        defb    %00000000, %10100111, %11111001, %10100000
+        defb    %00000000, %10010001, %01001001, %01010000
+        defb    %00000000, %10001111, %11111110, %00011000
+        defb    %00000000, %11001110, %01111110, %00011110
+        defb    %00000000, %11010001, %11110101, %00000010
+        defb    %00000000, %10001000, %01100010, %00000000
+        defb    %00000000, %11100111, %11111100, %00000000
+        defb    %00000000, %11111110, %01001110, %00000000
+        defb    %00000000, %01001011, %11110010, %00000000
+        defb    %00000000, %00000100, %11011111, %00000000
+        defb    %00000000, %00000011, %11111001, %11110000
+        defb    %00000000, %00000001, %01001000, %01001110
+        defb    %00000000, %00000111, %11111100, %00000010
+        defb    %00000000, %00000110, %00011100, %00000000
+        defb    %00000000, %00000101, %00010100, %00000000
+        defb    %00000000, %00000100, %10100110, %00000000
+        defb    %00000000, %00001100, %01000010, %00000000
+        defb    %00000000, %00001000, %00000010, %00000000
+        defb    %00000000, %00001000, %00000011, %00000000
+        defb    %00000000, %00001000, %00000010, %00000000
+        defb    %00000000, %00001100, %00000011, %00000000
+        defb    %00000000, %00001100, %00000011, %10000000
+        defb    %00000000, %00001000, %00000010, %00000000
+        defb    %00000000, %00001100, %00000010, %00000000
+        defb    %00000000, %00001000, %00000001, %00000000
+        defb    %00000000, %00001100, %00000001, %00000000
+        defb    %00000000, %00001000, %00000001, %00000000
+        defb    %00000000, %00001000, %00000001, %00000000
+        defb    %00000000, %00111111, %00000111, %11100000
+
+SpriteAttributesDeathScared:
+        defb    71, 70, 70, 71
+        defb    71, 70, 70, 71
+        defb    71, 71, 71, 71
+        defb    71, 71, 71, 71
+        defb    71, 71, 71, 71
+        defb    71, 71, 71, 71
+        defb    71, 71, 71, 71
 
 ;----- 1 - The skeleton waits quietly with the scythe planted beside her.
 SpriteDeath1:

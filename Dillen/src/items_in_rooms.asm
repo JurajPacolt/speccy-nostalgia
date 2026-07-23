@@ -59,9 +59,27 @@ _ItemsDrawNext:
         ld    de,ITEM_DRAW_RECORD_SIZE
         add   ix,de
         djnz  _ItemsDrawLoop
-        ret
+        jp    _ItemsDrawCastleDynamite
 ; END - ItemsInRooms
 ;-------------------------------------------------------------------------------
+
+; Draw the planted dynamite directly to the screen like an ordinary room item.
+; It remains visible at the foot of the wall until the match is used.
+_ItemsDrawCastleDynamite:
+        ld    a,(_ItemsActualRoomId)
+        cp    CASTLE_ROOM_ID
+        ret   nz
+
+        call  IsDynamiteUsed
+        ret   nz
+        call  IsMatchUsed
+        ret   z
+
+        ld    ix,SpriteItemDynamite
+        ld    b,CASTLE_DYNAMITE_Y
+        ld    c,CASTLE_DYNAMITE_X
+        ld    de,22528
+        jp    DrawSprite
 
 ;-------------------------------------------------------------------------------
 ; BEGIN - ResetItems - Put every item back in its room from the paper map.
@@ -77,6 +95,9 @@ ResetItems:
         ld    de,ItemDrawRecords
         ld    bc,ITEM_COUNT*ITEM_DRAW_RECORD_SIZE
         ldir
+
+        xor   a
+        ld    (_CastleExplosionTimer),a
         jp    _ItemsRefreshRoom
 ; END - ResetItems
 ;-------------------------------------------------------------------------------
@@ -112,7 +133,8 @@ CollectItem:
 ;-------------------------------------------------------------------------------
 ; BEGIN - UseItem - Consume a carried item at its use location from the map.
 ; A - item ID (ITEM_*).
-; return CF=1 - used, CF=0 - not carried, invalid ID or wrong room.
+; return CF=1 - used, CF=0 - not carried, invalid ID, wrong room or too far
+; from the item-specific target.
 UseItem:
         cp    1
         jp    c,_ItemsActionFailed
@@ -126,7 +148,7 @@ UseItem:
         call  _ItemsGetStateAddress
         ld    a,(hl)
         cp    ITEM_STATE_CARRIED
-        jr    nz,_ItemsActionFailed
+        jp    nz,_ItemsActionFailed
 
         push  hl
         ld    a,c
@@ -138,9 +160,51 @@ UseItem:
         ld    a,(hl)
         pop   hl
         cp    b
-        jr    nz,_ItemsActionFailed
+        jp    nz,_ItemsActionFailed
 
+        ; Some item marks cover a whole room on the paper map, but the actions
+        ; themselves work only beside their exact target.
+        ld    a,c
+        cp    ITEM_CROSS
+        jr    z,.UseCross
+        cp    ITEM_DYNAMITE
+        jr    z,.UseDynamite
+        cp    ITEM_MATCH
+        jr    z,.UseMatch
+        jr    .UseItemReady
+
+.UseCross:
+        push  hl
+        call  CanUseCrossAtDeath
+        pop   hl
+        jp    nc,_ItemsActionFailed
+        jr    .UseItemReady
+
+.UseDynamite:
+        push  hl
+        call  CanUseCastleItemAtWall
+        pop   hl
+        jp    nc,_ItemsActionFailed
+        jr    .UseItemReady
+
+.UseMatch:
+        push  hl
+        call  CanLightCastleDynamite
+        pop   hl
+        jp    nc,_ItemsActionFailed
+
+.UseItemReady:
         ld    (hl),ITEM_STATE_USED
+
+        ; Lighting the planted dynamite begins a short blocking explosion. The
+        ; passage becomes solid-free only when its last frame is erased.
+        ld    a,c
+        cp    ITEM_MATCH
+        jr    nz,.UseItemRefresh
+        ld    a,CASTLE_EXPLOSION_FRAMES
+        ld    (_CastleExplosionTimer),a
+
+.UseItemRefresh:
         call  _ItemsRefreshRoom
         scf
         ret
@@ -158,13 +222,61 @@ IsBridgeHoleOpen:
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
+; BEGIN - IsCrossUsed - Query the permanent frightened state of the Death.
+; return Z - the cross has frightened her, NZ - she is still guarding the path.
+IsCrossUsed:
+        ld    a,(ItemStates+ITEM_CROSS-1)
+        cp    ITEM_STATE_USED
+        ret
+; END - IsCrossUsed
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; State queries for the castle wall sequence.
+; return Z - the queried condition is true, NZ - it is false.
+IsDynamiteUsed:
+        ld    a,(ItemStates+ITEM_DYNAMITE-1)
+        cp    ITEM_STATE_USED
+        ret
+
+IsMatchUsed:
+        ld    a,(ItemStates+ITEM_MATCH-1)
+        cp    ITEM_STATE_USED
+        ret
+
+IsCastleWallDestroyed:
+        call  IsDynamiteUsed
+        ret   nz
+        jp    IsMatchUsed
+
+IsCastleWallOpen:
+        call  IsCastleWallDestroyed
+        ret   nz
+        ld    a,(_CastleExplosionTimer)
+        or    a
+        ret
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
 ; BEGIN - ApplyUsedItemsToRoom - Apply permanent item effects after ShowRoom
 ; has drawn the static sprites and before it copies their attributes.
 ApplyUsedItemsToRoom:
         call  _ItemsGetActualRoomId
         cp    BRIDGE_ROOM_ID
+        jr    z,.ApplyBridgeHole
+        cp    CASTLE_ROOM_ID
         ret   nz
 
+        call  IsCastleWallDestroyed
+        ret   nz
+
+        ld    ix,SpriteCastleWallHole
+        ld    b,CASTLE_WALL_HOLE_Y
+        ld    c,CASTLE_WALL_X
+        ld    de,RoomsAttrCache
+        jp    DrawSprite
+
+.ApplyBridgeHole:
         call  IsBridgeHoleOpen
         ret   nz
 
@@ -174,6 +286,123 @@ ApplyUsedItemsToRoom:
         ld    de,RoomsAttrCache
         jp    DrawSprite
 ; END - ApplyUsedItemsToRoom
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - CanUseCastleItemAtWall - Is the player beside the wall's bottom block?
+; The caller has already checked Room006.
+; return CF=1 - close enough, CF=0 - too far away.
+CanUseCastleItemAtWall:
+        ld    a,(PlayerX)
+        add   a,PLAYER_FOOT_WIDTH+CASTLE_ITEM_USE_RANGE
+        cp    CASTLE_WALL_X
+        jr    c,.CastleItemTooFar
+
+        ld    a,(PlayerX)
+        cp    CASTLE_WALL_X+CASTLE_WALL_WIDTH*8+CASTLE_ITEM_USE_RANGE
+        jr    nc,.CastleItemTooFar
+
+        ld    a,(PlayerY)
+        add   a,PLAYER_SPRITE_HEIGHT
+        cp    CASTLE_WALL_HOLE_Y
+        jr    c,.CastleItemTooFar
+
+        ld    a,(PlayerY)
+        cp    CASTLE_WALL_HOLE_Y+CASTLE_WALL_HOLE_HEIGHT*8
+        jr    nc,.CastleItemTooFar
+
+        scf
+        ret
+
+.CastleItemTooFar:
+        or    a
+        ret
+; END - CanUseCastleItemAtWall
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - CanLightCastleDynamite - The match works only after the dynamite has
+; been planted and while the player is still beside it.
+; return CF=1 - it can be lit, CF=0 - dynamite missing or player too far away.
+CanLightCastleDynamite:
+        call  IsDynamiteUsed
+        jr    nz,.CastleMatchFailed
+        jp    CanUseCastleItemAtWall
+
+.CastleMatchFailed:
+        or    a
+        ret
+; END - CanLightCastleDynamite
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - IsCastleWallPixelSolid - Explicit collision for the castle's white
+; right wall. The upper wall always remains solid; the bottom block becomes
+; free only after both items are used and the explosion has finished.
+; B - pixel Y.
+; C - pixel X.
+; return NZ - solid wall pixel, Z - this routine does not block the pixel.
+IsCastleWallPixelSolid:
+        push  hl
+        push  de
+
+        call  _ItemsGetActualRoomId
+        cp    CASTLE_ROOM_ID
+        jr    nz,.CastleWallPixelFree
+
+        ld    a,c
+        cp    CASTLE_WALL_X
+        jr    c,.CastleWallPixelFree
+        cp    CASTLE_WALL_X+CASTLE_WALL_WIDTH*8
+        jr    nc,.CastleWallPixelFree
+
+        ld    a,b
+        cp    CASTLE_WALL_Y
+        jr    c,.CastleWallPixelFree
+        cp    CASTLE_WALL_Y+CASTLE_WALL_HEIGHT*8
+        jr    nc,.CastleWallPixelFree
+
+        cp    CASTLE_WALL_HOLE_Y
+        jr    c,.CastleWallPixelSolid
+        call  IsCastleWallOpen
+        jr    z,.CastleWallPixelFree
+
+.CastleWallPixelSolid:
+        pop   de
+        pop   hl
+        ld    a,1
+        or    a
+        ret
+
+.CastleWallPixelFree:
+        pop   de
+        pop   hl
+        xor   a
+        ret
+; END - IsCastleWallPixelSolid
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; BEGIN - CastleExplosionInRoom - Draw the blast over the newly cleared block.
+; The last tick erases it with the same blank sprite used by ShowRoom.
+CastleExplosionInRoom:
+        ld    hl,_CastleExplosionTimer
+        ld    a,(hl)
+        or    a
+        ret   z
+
+        dec   (hl)
+        cp    1
+        ld    ix,SpriteCastleExplosion
+        jr    nz,.CastleExplosionDraw
+        ld    ix,SpriteCastleWallHole
+
+.CastleExplosionDraw:
+        ld    b,CASTLE_WALL_HOLE_Y
+        ld    c,CASTLE_WALL_X
+        ld    de,22528
+        jp    PlayerDrawDynamicSprite
+; END - CastleExplosionInRoom
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
@@ -337,6 +566,11 @@ _ItemsDrawnMapRoom:
 _ItemsActualRoomId:
         defb  255
 
+; Counts down only while Room006 is active. Zero means that the cleared wall
+; block is already safe to walk through.
+_CastleExplosionTimer:
+        defb  0
+
 ;-------------------------------------------------------------------------------
 ; Three empty cells overwrite the middle of the bridge. Their white-ink
 ; attributes describe non-solid scenery to the player collision code, while
@@ -345,6 +579,45 @@ SpriteBridgeHole:
         defb  BRIDGE_HOLE_WIDTH,8
         block BRIDGE_HOLE_WIDTH*8,0
         block BRIDGE_HOLE_WIDTH,71
+
+;-------------------------------------------------------------------------------
+; The blank block permanently overwrites the lowest castle-wall segment.
+SpriteCastleWallHole:
+        defb  CASTLE_WALL_WIDTH,CASTLE_WALL_HOLE_HEIGHT*8
+        block CASTLE_WALL_WIDTH*CASTLE_WALL_HOLE_HEIGHT*8,0
+        block CASTLE_WALL_WIDTH*CASTLE_WALL_HOLE_HEIGHT,71
+
+; A short, bright burst fills exactly the block removed from the castle wall.
+; The animation routine replaces it with SpriteCastleWallHole on its last tick.
+SpriteCastleExplosion:
+        defb  CASTLE_WALL_WIDTH,CASTLE_WALL_HOLE_HEIGHT*8
+        defb  %00000000,%00011000,%00000000
+        defb  %00001000,%00011000,%00010000
+        defb  %00000100,%00111100,%00100000
+        defb  %00000010,%01111110,%01000000
+        defb  %00010001,%11111111,%10001000
+        defb  %00001011,%11011011,%11010000
+        defb  %00000111,%11111111,%11100000
+        defb  %00111111,%11100111,%11111100
+        defb  %00011111,%11111111,%11111000
+        defb  %01111111,%11011011,%11111110
+        defb  %00111111,%11111111,%11111100
+        defb  %11111110,%11111111,%01111111
+        defb  %01111111,%11111111,%11111110
+        defb  %00111111,%10111101,%11111100
+        defb  %01111111,%11111111,%11111110
+        defb  %00011111,%01111110,%11111000
+        defb  %00001111,%11100111,%11110000
+        defb  %00000111,%11011011,%11100000
+        defb  %00001011,%11111111,%11010000
+        defb  %00010001,%01111110,%10001000
+        defb  %00100000,%00111100,%00000100
+        defb  %01000000,%00011000,%00000010
+        defb  %00010000,%00011000,%00001000
+        defb  %00000000,%00000000,%00000000
+        defb  66,70,66
+        defb  70,71,70
+        defb  66,70,66
 
 ;-------------------------------------------------------------------------------
 ; Spectrum sprites use the same high-contrast, slightly rough silhouettes as

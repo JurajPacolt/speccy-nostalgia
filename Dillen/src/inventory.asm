@@ -128,7 +128,14 @@ InventoryHandleOpen:
         ld    (hl),0
         ld    c,a
         cp    ITEM_PICKAXE
+        jr    z,.IHO_TryUseItem
+        cp    ITEM_CROSS
+        jr    z,.IHO_TryUseItem
+        cp    ITEM_MATCH
+        jr    z,.IHO_TryUseItem
+        cp    ITEM_DYNAMITE
         jr    nz,.IHO_DropItem
+.IHO_TryUseItem:
         call  UseItem
         jr    c,.IHO_Close
 .IHO_DropItem:

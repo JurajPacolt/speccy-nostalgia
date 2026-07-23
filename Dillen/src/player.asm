@@ -963,6 +963,12 @@ PlayerPixelSolid:
         call  IsDeathPixelSolid
         ret   nz
 
+        ; The castle uses white blocks for its artwork. White scenery is
+        ; normally passable, so its right wall has an explicit solid mask until
+        ; the dynamite blast has finished.
+        call  IsCastleWallPixelSolid
+        ret   nz
+
         ld    a,b
         cp    PLAYER_FLOOR_Y
         jr    c,.PlayerPixelInk

@@ -14,6 +14,20 @@ UNDERGROUND_SHAFT_MAP_INDEX equ 22
 UNDERGROUND_SHAFT_X         equ 16*8
 UNDERGROUND_SHAFT_WIDTH     equ 4
 
+; The right wall of the castle in Room006 blocks the route to the exit. Its
+; lowest 24-pixel block is removed after the planted dynamite is lit.
+CASTLE_ROOM_ID             equ 6
+CASTLE_WALL_X              equ 16*8
+CASTLE_WALL_Y              equ 5*8
+CASTLE_WALL_WIDTH          equ 3
+CASTLE_WALL_HEIGHT         equ 15
+CASTLE_WALL_HOLE_Y         equ 17*8
+CASTLE_WALL_HOLE_HEIGHT    equ 3
+CASTLE_DYNAMITE_X          equ CASTLE_WALL_X+CASTLE_WALL_WIDTH*8
+CASTLE_DYNAMITE_Y          equ 18*8
+CASTLE_ITEM_USE_RANGE      equ 16
+CASTLE_EXPLOSION_FRAMES   equ 12
+
 ;-------------------------------------------------------------------------------
 ; BEGIN - ShowRoom
 ShowRoom:
@@ -562,6 +576,7 @@ Room006:
         defw  SPRITE_BLOCK_4
         defb  16*8, 14*8, 7
         defw  SPRITE_BLOCK_4
+        ; Dynamite removes this complete block, opening a 24-pixel-high route.
         defb  16*8, 17*8, 7
         defw  SPRITE_BLOCK_4
 

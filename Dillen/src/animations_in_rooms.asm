@@ -25,6 +25,10 @@ _air_jump_1:
         jr    nz, _air_jump_2
         jp  _AIR_Room4
 _air_jump_2:
+        cp    6
+        jr    nz, _air_jump_castle
+        jp  CastleExplosionInRoom
+_air_jump_castle:
         cp    7
         jr    nz, _air_jump_3
         jp  DeathInRoom ; The Death with the scythe, in death_in_room.asm.
@@ -59,6 +63,8 @@ AIR_IsCellReserved:
         jr    z,_AIR_ICR_Room1
         cp    3
         jr    z,_AIR_ICR_Room3
+        cp    6
+        jr    z,_AIR_ICR_Room6
         cp    7
         jr    z,_AIR_ICR_Room7
         jr    _AIR_ICR_Free
@@ -90,6 +96,20 @@ _AIR_ICR_Room3:
         cp    AIR_ROOM3_SPLASH_X/8+3
         jr    nc,_AIR_ICR_Free
         jr    _AIR_ICR_Reserved
+
+;----- Room 6 - keep stars out of the block used by the castle explosion. ------
+_AIR_ICR_Room6:
+        ld    a,c
+        cp    CASTLE_WALL_X/8
+        jr    c,_AIR_ICR_Free
+        cp    CASTLE_WALL_X/8+CASTLE_WALL_WIDTH
+        jr    nc,_AIR_ICR_Free
+        ld    a,b
+        cp    CASTLE_WALL_HOLE_Y/8
+        jr    c,_AIR_ICR_Free
+        cp    CASTLE_WALL_HOLE_Y/8+CASTLE_WALL_HOLE_HEIGHT
+        jr    c,_AIR_ICR_Reserved
+        jr    _AIR_ICR_Free
 
 ;----- Room 7 - the Death with the scythe is guarding the path. ----------------
 _AIR_ICR_Room7:
