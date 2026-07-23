@@ -1,5 +1,5 @@
 ;###############################################################################
-;##### AY background music and IM2 player. #####################################
+;##### AY title/game music, start fanfare and IM2 player. ######################
 ;###############################################################################
 
 ; The tune runs at 150 BPM on a 50 Hz PAL machine. One step takes 5 frames and
@@ -23,7 +23,13 @@ AY_DATA_PORT           equ 49149 ; 0xBFFD
 AY_FRAMES_PER_STEP     equ 5
 AY_STEPS_PER_PATTERN   equ 16
 AY_ORDER_LENGTH        equ 32
+AY_TITLE_ORDER_LENGTH  equ 8
+AY_VICTORY_ORDER_LENGTH equ 8
 AY_CHORD_MINOR         equ 128
+
+AY_SONG_GAME           equ 0
+AY_SONG_TITLE          equ 1
+AY_SONG_VICTORY        equ 2
 
 ; Keep the IM2 table and handler well above the growing game/music data. Every
 ; byte in the 257-byte table points to the same 0xF1F1 handler address.
@@ -106,10 +112,10 @@ AY_ENVELOPE_VOLUME     equ 16 ; Channel volume bit that hands the level over to 
 AY_SHIMMER_DELAY       equ 8
 
 ;-------------------------------------------------------------------------------
-; InitAYMusicIM2 - initialize AY and switch the game to the music IM2 handler.
+; InitAYMusicIM2 - start the title tune and switch to the music IM2 handler.
 ; EntryPoint already disabled interrupts before this routine is called.
 InitAYMusicIM2:
-        call  AYMusicInit
+        call  AYMusicStartTitleSong
         ld    a,AY_IM2_VECTOR_HIGH
         ld    i,a
         im    2
@@ -118,8 +124,39 @@ InitAYMusicIM2:
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
+; Select the slower D-minor title tune and restart the shared player.
+AYMusicStartTitleSong:
+        ld    a,AY_SONG_TITLE
+        ld    (AYMusicSong),a
+        ld    a,7
+        ld    (AYMusicFramesPerStep),a
+        jp    AYMusicInit
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; Select and restart the original in-game country tune.
+AYMusicStartGameSong:
+        ld    a,AY_SONG_GAME
+        ld    (AYMusicSong),a
+        ld    a,AY_FRAMES_PER_STEP
+        ld    (AYMusicFramesPerStep),a
+        jp    AYMusicInit
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; Select the bright victory march used by both ending screens.
+AYMusicStartVictorySong:
+        ld    a,AY_SONG_VICTORY
+        ld    (AYMusicSong),a
+        ld    a,6
+        ld    (AYMusicFramesPerStep),a
+        jp    AYMusicInit
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
 AYMusicInit:
         xor   a
+        ld    (AYMusicEnabled),a
         ld    (AYMusicOrderIndex),a
         ld    (AYMusicStepIndex),a
         ld    (AYMusicArpeggioPhase),a
@@ -138,7 +175,6 @@ AYMusicInit:
 
         ld    a,1 ; The first interrupt immediately loads step zero.
         ld    (AYMusicStepTimer),a
-        ld    (AYMusicEnabled),a
 
         ld    e,0
         ld    a,8
@@ -152,7 +188,11 @@ AYMusicInit:
         call  AYMusicWriteRegister
         ld    e,56 ; Tone A/B/C on, noise A/B/C off.
         ld    a,7
-        jp    AYMusicWriteRegister
+        call  AYMusicWriteRegister
+
+        ld    a,1
+        ld    (AYMusicEnabled),a
+        ret
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
@@ -167,7 +207,7 @@ AYMusicTick:
         ld    (AYMusicStepTimer),a
         jr    nz,.Render
 
-        ld    a,AY_FRAMES_PER_STEP
+        ld    a,(AYMusicFramesPerStep)
         ld    (AYMusicStepTimer),a
         call  AYMusicLoadStep
 
@@ -201,12 +241,34 @@ AYMusicLoadStep:
         ld    e,a
         ld    d,0
         ld    hl,AYMusicOrder
+        ld    a,(AYMusicSong)
+        or    a
+        jr    z,.OrderReady
+        cp    AY_SONG_TITLE
+        jr    nz,.VictoryOrder
+        ld    hl,AYTitleMusicOrder
+        jr    .OrderReady
+.VictoryOrder:
+        ld    hl,AYVictoryMusicOrder
+.OrderReady:
         add   hl,de
         ld    a,(hl) ; Pattern number.
         add   a,a
         ld    e,a
         ld    d,0
         ld    hl,AYMusicPatternTable
+        push  af
+        ld    a,(AYMusicSong)
+        or    a
+        jr    z,.PatternTableReady
+        cp    AY_SONG_TITLE
+        jr    nz,.VictoryPatternTable
+        ld    hl,AYTitleMusicPatternTable
+        jr    .PatternTableReady
+.VictoryPatternTable:
+        ld    hl,AYVictoryMusicPatternTable
+.PatternTableReady:
+        pop   af
         add   hl,de
         ld    e,(hl)
         inc   hl
@@ -282,7 +344,20 @@ AYMusicLoadStep:
         ld    (AYMusicStepIndex),a
         ld    a,(AYMusicOrderIndex)
         inc   a
-        cp    AY_ORDER_LENGTH
+        ld    b,AY_ORDER_LENGTH
+        ld    c,a
+        ld    a,(AYMusicSong)
+        or    a
+        jr    z,.OrderLengthReady
+        cp    AY_SONG_TITLE
+        jr    nz,.VictoryOrderLength
+        ld    b,AY_TITLE_ORDER_LENGTH
+        jr    .OrderLengthReady
+.VictoryOrderLength:
+        ld    b,AY_VICTORY_ORDER_LENGTH
+.OrderLengthReady:
+        ld    a,c
+        cp    b
         jr    c,.StoreOrder
         xor   a
 .StoreOrder:
@@ -301,6 +376,16 @@ AYMusicLoadRhythm:
         ld    e,a
         ld    d,0
         ld    hl,AYMusicRhythmOrder
+        ld    a,(AYMusicSong)
+        or    a
+        jr    z,.RhythmOrderReady
+        cp    AY_SONG_TITLE
+        jr    nz,.VictoryRhythmOrder
+        ld    hl,AYTitleMusicRhythmOrder
+        jr    .RhythmOrderReady
+.VictoryRhythmOrder:
+        ld    hl,AYVictoryMusicRhythmOrder
+.RhythmOrderReady:
         add   hl,de
         ld    a,(hl)
         add   a,a
@@ -771,8 +856,112 @@ AYMusicWriteRegister:
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
+; Play a short rising three-voice fanfare while the title remains visible.
+; The background player is disabled, but IM2 remains active so HALT still gives
+; exact 50 Hz timing. Each data item is duration, notes A/B/C and volume.
+AYMusicPlayStartFanfare:
+        ld    ix,AYMusicStartFanfareData
+        jp    AYMusicPlayFanfare
+
+; Play the longer triumphant fanfare when Dillen clears the castle door.
+AYMusicPlayVictoryFanfare:
+        ld    ix,AYMusicVictoryFanfareData
+
+AYMusicPlayFanfare:
+        xor   a
+        ld    (AYMusicEnabled),a
+        call  AYMusicSilence
+
+        ld    e,56 ; Tone A/B/C on, all noise off.
+        ld    a,7
+        call  AYMusicWriteRegister
+
+.NextFanfareChord:
+        ld    a,(ix+0)
+        or    a
+        jr    z,.FanfareDone
+        ld    b,a
+
+        ld    a,(ix+1)
+        call  AYMusicWriteFanfareToneA
+        ld    a,(ix+2)
+        call  AYMusicWriteFanfareToneB
+        ld    a,(ix+3)
+        call  AYMusicWriteFanfareToneC
+
+        ld    e,(ix+4)
+        ld    a,8
+        call  AYMusicWriteRegister
+        ld    e,(ix+4)
+        ld    a,9
+        call  AYMusicWriteRegister
+        ld    e,(ix+4)
+        ld    a,10
+        call  AYMusicWriteRegister
+
+.FanfareWait:
+        halt
+        djnz  .FanfareWait
+
+        ld    de,5
+        add   ix,de
+        jr    .NextFanfareChord
+
+.FanfareDone:
+        jp    AYMusicSilence
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+AYMusicWriteFanfareToneA:
+        call  AYMusicNotePeriod
+        ld    e,l
+        xor   a
+        call  AYMusicWriteRegister
+        ld    e,h
+        ld    a,1
+        jp    AYMusicWriteRegister
+
+AYMusicWriteFanfareToneB:
+        call  AYMusicNotePeriod
+        ld    e,l
+        ld    a,2
+        call  AYMusicWriteRegister
+        ld    e,h
+        ld    a,3
+        jp    AYMusicWriteRegister
+
+AYMusicWriteFanfareToneC:
+        call  AYMusicNotePeriod
+        ld    e,l
+        ld    a,4
+        call  AYMusicWriteRegister
+        ld    e,h
+        ld    a,5
+        jp    AYMusicWriteRegister
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+; Silence every channel and disconnect tone/noise until a song starts again.
+AYMusicSilence:
+        ld    e,0
+        ld    a,8
+        call  AYMusicWriteRegister
+        ld    a,9
+        call  AYMusicWriteRegister
+        ld    a,10
+        call  AYMusicWriteRegister
+        ld    e,63
+        ld    a,7
+        jp    AYMusicWriteRegister
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
 AYMusicEnabled:
         defb  0
+AYMusicSong:
+        defb  AY_SONG_TITLE
+AYMusicFramesPerStep:
+        defb  7
 AYMusicOrderIndex:
         defb  0
 AYMusicStepIndex:
@@ -815,6 +1004,19 @@ AYMusicNotePeriods:
         defw  424,400,377,356,336,317,300,283,267,252,238,224
         defw  212,200,189,178,168,159,150,141,133,126,119,112
 
+; A compact major-chord rise: C, F, G and the final C resolution. Short silent
+; gaps articulate the first three hits; the last chord rings long enough to
+; bridge cleanly into the game.
+AYMusicStartFanfareData:
+        defb  5,N_C4,N_E4,N_G4,13
+        defb  2,N_REST,N_REST,N_REST,0
+        defb  5,N_F4,N_A4,N_C5,13
+        defb  2,N_REST,N_REST,N_REST,0
+        defb  6,N_G4,N_B4,N_D5,14
+        defb  2,N_REST,N_REST,N_REST,0
+        defb  20,N_C5,N_E5,N_G5,15
+        defb  0
+
 ; Thirty-two bars = 51.2 seconds. A A B A, where the second A closes with the
 ; run that leads into the bridge.
 AYMusicOrder:
@@ -832,9 +1034,25 @@ AYMusicRhythmOrder:
         defb  2,2,1,2, 2,2,1,4
         defb  1,0,2,1, 1,2,1,5
 
+; The title has its own eight-bar order and restrained percussion. At seven
+; frames per step it loops after 17.92 seconds, clearly apart from the game tune.
+AYTitleMusicOrder:
+        defb  0,1,2,3, 0,1,3,0
+
+AYTitleMusicRhythmOrder:
+        defb  6,6,6,6, 6,6,6,6
+
+; An eight-bar C-major victory march, about 15.36 seconds per loop.
+AYVictoryMusicOrder:
+        defb  0,1,0,2, 0,1,2,3
+
+AYVictoryMusicRhythmOrder:
+        defb  7,7,7,7, 7,7,7,7
+
 AYMusicRhythmTable:
         defw  AYMusicRhythm0,AYMusicRhythm1,AYMusicRhythm2
         defw  AYMusicRhythm3,AYMusicRhythm4,AYMusicRhythm5
+        defw  AYTitleMusicRhythm,AYVictoryMusicRhythm
 
 ; 0: driving two-step with a kick pushed onto the "and" of two.
 AYMusicRhythm0:
@@ -878,10 +1096,32 @@ AYMusicRhythm5:
         defb  AY_DRUM_KICK,AY_DRUM_HAT,AY_DRUM_SNARE,AY_DRUM_HAT
         defb  AY_DRUM_KICK,AY_DRUM_SNARE,AY_DRUM_TOM,AY_DRUM_SNARE
 
+; A distant pulse for the title: two low impacts and two quiet points of light.
+AYTitleMusicRhythm:
+        defb  AY_DRUM_KICK,AY_DRUM_NONE,AY_DRUM_NONE,AY_DRUM_NONE
+        defb  AY_DRUM_NONE,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_NONE
+        defb  AY_DRUM_TOM,AY_DRUM_NONE,AY_DRUM_NONE,AY_DRUM_NONE
+        defb  AY_DRUM_NONE,AY_DRUM_NONE,AY_DRUM_OPEN_HAT,AY_DRUM_NONE
+
+; A firm four-beat march for the win tune, with a small tom lift into each loop.
+AYVictoryMusicRhythm:
+        defb  AY_DRUM_KICK,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_NONE
+        defb  AY_DRUM_SNARE,AY_DRUM_NONE,AY_DRUM_HAT,AY_DRUM_NONE
+        defb  AY_DRUM_KICK,AY_DRUM_HAT,AY_DRUM_KICK,AY_DRUM_HAT
+        defb  AY_DRUM_SNARE,AY_DRUM_NONE,AY_DRUM_TOM,AY_DRUM_SNARE
+
 AYMusicPatternTable:
         defw  AYMusicPattern0,AYMusicPattern1,AYMusicPattern2,AYMusicPattern3
         defw  AYMusicPattern4,AYMusicPattern5,AYMusicPattern6,AYMusicPattern7
         defw  AYMusicPattern8,AYMusicPattern9,AYMusicPattern10,AYMusicPattern11
+
+AYTitleMusicPatternTable:
+        defw  AYTitleMusicPattern0,AYTitleMusicPattern1
+        defw  AYTitleMusicPattern2,AYTitleMusicPattern3
+
+AYVictoryMusicPatternTable:
+        defw  AYVictoryMusicPattern0,AYVictoryMusicPattern1
+        defw  AYVictoryMusicPattern2,AYVictoryMusicPattern3
 
 ; Every step: melody note, bass note, chord root/type. The bass plays the country
 ; root-fifth "boom" on the four beats and walks into the next chord on the last
@@ -1118,6 +1358,86 @@ AYMusicPattern11:
         defb  N_B4,          N_B2,  N_G3
         defb  N_HOLD,        N_HOLD,N_G3
 
+; The title tune is a slower, moonlit D-minor theme. Its broad held notes and
+; sparse bass make it deliberately calmer and darker than the in-game two-step.
+
+; Title 0: D minor establishes the descending D5-A4-F4 motif.
+AYTitleMusicPattern0:
+        defb  N_D5+AY_ACCENT,N_D2,  N_D3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_HOLD,N_D3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_REST,N_D3+AY_CHORD_MINOR
+        defb  N_A4,          N_REST,N_D3+AY_CHORD_MINOR
+        defb  N_F4+AY_ACCENT,N_A2,  N_D3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_HOLD,N_D3+AY_CHORD_MINOR
+        defb  N_A4,          N_REST,N_D3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_REST,N_D3+AY_CHORD_MINOR
+        defb  N_C5+AY_ACCENT,N_D2,  N_D3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_HOLD,N_D3+AY_CHORD_MINOR
+        defb  N_A4,          N_REST,N_D3+AY_CHORD_MINOR
+        defb  N_F4,          N_REST,N_D3+AY_CHORD_MINOR
+        defb  N_D5+AY_ACCENT,N_A2,  N_D3+AY_CHORD_MINOR
+        defb  N_HOLD,        N_HOLD,N_D3+AY_CHORD_MINOR
+        defb  N_C5,          N_REST,N_D3+AY_CHORD_MINOR
+        defb  N_A4,          N_HOLD,N_D3+AY_CHORD_MINOR
+
+; Title 1: B-flat major opens the theme into a warmer answer.
+AYTitleMusicPattern1:
+        defb  N_F5+AY_ACCENT,N_AS2, N_AS2
+        defb  N_HOLD,        N_HOLD,N_AS2
+        defb  N_HOLD,        N_REST,N_AS2
+        defb  N_D5,          N_REST,N_AS2
+        defb  N_AS4+AY_ACCENT,N_F2, N_AS2
+        defb  N_HOLD,        N_HOLD,N_AS2
+        defb  N_D5,          N_REST,N_AS2
+        defb  N_HOLD,        N_REST,N_AS2
+        defb  N_F5+AY_ACCENT,N_AS2, N_AS2
+        defb  N_HOLD,        N_HOLD,N_AS2
+        defb  N_E5,          N_REST,N_AS2
+        defb  N_D5,          N_REST,N_AS2
+        defb  N_C5+AY_ACCENT,N_F2,  N_AS2
+        defb  N_HOLD,        N_HOLD,N_AS2
+        defb  N_D5,          N_REST,N_AS2
+        defb  N_HOLD,        N_HOLD,N_AS2
+
+; Title 2: C major lifts the middle of the phrase before the dominant arrives.
+AYTitleMusicPattern2:
+        defb  N_G5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_E5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_D5+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_C5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_E5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_D5,          N_REST,N_C3
+        defb  N_C5,          N_REST,N_C3
+        defb  N_G4+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_C5,          N_REST,N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+
+; Title 3: A major uses C-sharp as the bright leading colour and points back
+; toward D minor at the next bar.
+AYTitleMusicPattern3:
+        defb  N_E5+AY_ACCENT,N_A2,  N_A3
+        defb  N_HOLD,        N_HOLD,N_A3
+        defb  N_CS5,         N_REST,N_A3
+        defb  N_HOLD,        N_REST,N_A3
+        defb  N_A4+AY_ACCENT,N_E3,  N_A3
+        defb  N_HOLD,        N_HOLD,N_A3
+        defb  N_B4,          N_REST,N_A3
+        defb  N_CS5,         N_REST,N_A3
+        defb  N_E5+AY_ACCENT,N_A2,  N_A3
+        defb  N_HOLD,        N_HOLD,N_A3
+        defb  N_CS5,         N_REST,N_A3
+        defb  N_B4,          N_REST,N_A3
+        defb  N_A4+AY_ACCENT,N_E3,  N_A3
+        defb  N_HOLD,        N_HOLD,N_A3
+        defb  N_CS5,         N_REST,N_A3
+        defb  N_HOLD,        N_HOLD,N_A3
+
 ;-------------------------------------------------------------------------------
 ; The ordinary game and music data must never grow into the reserved IM2 area.
         assert $ <= AY_IM2_VECTOR_ADDRESS
@@ -1127,6 +1447,101 @@ AYMusicPattern11:
         org   AY_IM2_VECTOR_ADDRESS
 AYMusicIM2VectorTable:
         defs  257,AY_IM2_HANDLER_BYTE
+
+; The vector table ends at 0xF101. Its otherwise unused 240-byte gap before the
+; fixed handler holds the 233 bytes used only by the victory fanfare and song.
+; None of these bytes can be read as an IM2 vector.
+AYMusicVictoryFanfareData:
+        defb  4,N_C4,N_E4,N_G4,13
+        defb  4,N_E4,N_G4,N_C5,13
+        defb  6,N_G4,N_C5,N_E5,14
+        defb  8,N_C5,N_E5,N_G5,15
+        defb  2,N_REST,N_REST,N_REST,0
+        defb  6,N_A4,N_C5,N_F5,13
+        defb  6,N_B4,N_D5,N_G5,14
+        defb  20,N_C5,N_E5,N_G5,15
+        defb  0
+
+; The victory song is an emphatic C-major march. Rising triads answer the
+; darker title theme and turn the ending into a clear musical reward.
+
+; Victory 0: the main C-major trumpet-like call.
+AYVictoryMusicPattern0:
+        defb  N_C5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_E5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_G5+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_E5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_C5+AY_ACCENT,N_C2,  N_C3
+        defb  N_E5,          N_HOLD,N_C3
+        defb  N_G5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_E5+AY_ACCENT,N_G2,  N_C3
+        defb  N_D5,          N_HOLD,N_C3
+        defb  N_C5,          N_B2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+
+; Victory 1: F major broadens the answer and reaches the high A.
+AYVictoryMusicPattern1:
+        defb  N_F5+AY_ACCENT,N_F2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_A5,          N_REST,N_F3
+        defb  N_HOLD,        N_REST,N_F3
+        defb  N_C5+AY_ACCENT,N_C3,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_F5,          N_REST,N_F3
+        defb  N_HOLD,        N_REST,N_F3
+        defb  N_A5+AY_ACCENT,N_F2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_G5,          N_REST,N_F3
+        defb  N_F5,          N_REST,N_F3
+        defb  N_E5+AY_ACCENT,N_C3,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+        defb  N_C5,          N_A2,  N_F3
+        defb  N_HOLD,        N_HOLD,N_F3
+
+; Victory 2: G major climbs to B5 and drives into the final cadence.
+AYVictoryMusicPattern2:
+        defb  N_D5+AY_ACCENT,N_G2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_G5,          N_REST,N_G3
+        defb  N_HOLD,        N_REST,N_G3
+        defb  N_B5+AY_ACCENT,N_D3,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_A5,          N_REST,N_G3
+        defb  N_G5,          N_REST,N_G3
+        defb  N_D5+AY_ACCENT,N_G2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+        defb  N_G5,          N_REST,N_G3
+        defb  N_HOLD,        N_REST,N_G3
+        defb  N_D5+AY_ACCENT,N_D3,  N_G3
+        defb  N_C5,          N_HOLD,N_G3
+        defb  N_B4,          N_B2,  N_G3
+        defb  N_HOLD,        N_HOLD,N_G3
+
+; Victory 3: a full C-major resolution that settles before the loop repeats.
+AYVictoryMusicPattern3:
+        defb  N_E5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_G5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_C5+AY_ACCENT,N_G2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_E5,          N_REST,N_C3
+        defb  N_G5,          N_REST,N_C3
+        defb  N_C5+AY_ACCENT,N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+        defb  N_E5,          N_REST,N_C3
+        defb  N_HOLD,        N_REST,N_C3
+        defb  N_G5+AY_ACCENT,N_G2,  N_C3
+        defb  N_E5,          N_HOLD,N_C3
+        defb  N_C5,          N_C2,  N_C3
+        defb  N_HOLD,        N_HOLD,N_C3
+
+        assert $ <= AY_IM2_HANDLER_ADDRESS
 
         org   AY_IM2_HANDLER_ADDRESS
 AYMusicIM2Handler:

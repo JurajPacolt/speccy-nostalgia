@@ -10,6 +10,8 @@
 
         call  InitAYMusicIM2
         call  TitleScreenShow
+        call  AYMusicPlayStartFanfare
+        call  AYMusicStartGameSong
 
         call  ClearScreenToBlack
         call  DrawBorder

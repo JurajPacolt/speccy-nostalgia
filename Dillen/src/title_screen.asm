@@ -29,7 +29,7 @@ TITLE_HERO_WALK_LEFT_TO_EDGE    equ 5
 ;-------------------------------------------------------------------------------
 ; BEGIN - TitleScreenShow - Display the text-free background, add every letter
 ; at runtime and wait for a fresh ENTER or SPACE press. InitAYMusicIM2 must
-; already be active so HALT advances animation and music at 50 Hz.
+; already be active so HALT advances animation and the title music at 50 Hz.
 TitleScreenShow:
         xor   a
         out   (254),a ; Black hardware border around the title artwork.

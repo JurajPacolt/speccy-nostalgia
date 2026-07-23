@@ -103,6 +103,7 @@ _GameWonShowPicture:
 _GameWonOpenMessage:
         ld    a,GAME_WON_STATE_MESSAGE_OPEN
         ld    (GameWonState),a
+        call  AYMusicPlayVictoryFanfare
         call  ClearScreenToBlack
         ld    a,GAME_WON_ATTR_BODY
         call  SetScreenAttributes
@@ -135,7 +136,8 @@ _GameWonOpenMessage:
         ld    ix,_GameWonPrompt
         ld    b,18
         ld    c,22
-        jp    Print4x8
+        call  Print4x8
+        jp    AYMusicStartVictorySong
 
 ; Set all 32 attribute cells of character row B to A.
 _GameWonSetAttrRow:
