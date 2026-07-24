@@ -1,20 +1,20 @@
 # DILLEN (Escape from underground)
 
-My try for develop some simple game for zx-spectrum. Before many times ago we are develops some demos for zx-spectrum with my friends and this is my nostalgic little moment. In project you can find image where is showed my draw of the rooms of this simple game. It's old paper based drawing, I thing that I was maybe 15-16-17 years old when I draw it. Well it's realy nostalgic and beautiful times for me.
+This is my attempt to develop a simple game for the ZX Spectrum. Many years ago my friends and I developed some demos for the ZX Spectrum, and this is my little nostalgic moment. In the project you can find an image showing my drawing of the rooms of this simple game. It's an old paper-based drawing — I think I was maybe 15, 16 or 17 years old when I drew it. Well, those were really nostalgic and beautiful times for me.
 
 *We are doing something for Speccy again ;)*
 
-**For compile use:**
+**To compile, use:**
 
 SjASMPlus - Z80 Assembly Cross-Compiler<br>
 [http://sourceforge.net/projects/sjasmplus/](http://sourceforge.net/projects/sjasmplus/)
 
-1.  Download
-2.	Unpack somewhere
-3.	Add execute path to system paths
-4.	And you can compile
+1.  Download it
+2.	Unpack it somewhere
+3.	Add its folder to your system PATH
+4.	Then you can compile
 
-For editing use, for example (or vscode):
+For editing you can use, for example (or VS Code):
 
 1.	ATOM editor [http://www.atom.io](http://www.atom.io)
 2.	ATOM plugin "process-palette"

@@ -10,13 +10,13 @@ Dillen ("Escape from underground") is a ZX Spectrum 128 game in Z80 assembly, bu
 sjasmplus -Isrc src/main.asm     # run from the repo root
 ```
 
-A successful build rewrites `Dillen.sna` (gitignored) at the repo root. `build_and_run.bat` builds and launches SpecEmu; `build.sh` / `build_and_run.sh` run the same assembler through Wine on Unix (`build_and_run.sh` has a hard-coded SjASMPlus path that likely needs updating).
+A successful build rewrites two gitignored artifacts at the repo root: the `Dillen.sna` snapshot (from `savesna`) and the self-starting `Dillen.tap` (staged by `tape_loader.asm`, assembled after the SNA). `build.bat` runs the same command; `build_and_run.bat` builds and launches SpecEmu; `build.sh` / `build_and_run.sh` run the same assembler through Wine on Unix (`build_and_run.sh` has a hard-coded SjASMPlus path that likely needs updating).
 
-The assembler on PATH is SjASMPlus **1.23.1**. Note that the scripts (`build.bat` and friends) still pass `main.asm` and rely on the `-I` include path to find it — 1.07 resolved the top-level source that way, 1.23 does not, so **the scripts fail with `error: opening file: main.asm`** until their path is spelled out. Build by hand with the command above, or fix the scripts.
+The assembler on PATH is SjASMPlus **1.23.1**. The `.bat` scripts now spell out `src/main.asm` and build cleanly as-is; the older 1.07 habit of passing bare `main.asm` and leaning on the `-I` include path no longer resolves under 1.23, so keep the `src/` prefix if you edit them.
 
 There is no test suite. Verification means: the build reports 0 errors, then you exercise the affected rooms, controls, graphics, and audio in an emulator. Test both keyboard and Kempston paths when touching input.
 
-## Regenerating player art
+## Regenerating art assets
 
 `src/player_sprites.asm` is generated — never hand-edit it. Frames are authored as ASCII art in `tools/generate_player_assets.py` (`#` = ink, `.` = paper/outline, space = transparent), which emits the bitmaps, their masks, and the `gfx/player-*.png|gif` previews:
 
@@ -24,26 +24,34 @@ There is no test suite. Verification means: the build reports 0 errors, then you
 py -3 .\tools\generate_player_assets.py    # needs Pillow
 ```
 
+The three full-screen pictures are generated the same way (all need Pillow; each writes a `src/binary/*.scr` the game `incbin`s, plus a `gfx/*.png` preview) — the `.scr` files are outputs, not source:
+
+- `tools/generate_title_screen.py` → `dillen-title.scr` / `.lzs` / logo `.bin`
+- `tools/generate_loading_screen.py` → `dillen-loading.scr` (the TAP loading screen)
+- `tools/generate_game_won_screen.py` → `game-won.scr` (the ending picture)
+
 ## Memory map
 
 - Code and data assemble from `org 25000` upward.
 - `ay_music.asm` ends with a hard `org 0xBE00` for the IM2 vector table (257 bytes of `0xBF`) and `org 0xBFBF` for the handler. **Code must not grow past 0xBE00** — the assembler will silently overlay it rather than warn.
 - Screen: the top 4 character rows are the info panel (`16384` / attrs `22528`); the game field is 30x18 characters starting at row 4 (`16384+32*4`), with a 1-character border drawn by `game_field.asm`.
+- After `savesna` writes the snapshot, `tape_loader.asm` reuses low memory to stage the TAP: the autorun BASIC at `org 23552`, then the 6912-byte loading screen assembled straight into VRAM at `org 16384` (this is only for `savetap` — it never lands in `Dillen.sna`). `title_screen.asm` stashes its logo bitmap at `org 23296`, the first byte past VRAM.
 
 ## Architecture
 
-`main.asm` is the entry point: it disables interrupts, clears the screen, draws the border and panel, installs the IM2 music handler, then jumps to `GameMainLoop`. It also holds the include list — **new modules must be added there**, and include order defines the link order. (`player_sprites.asm` is the exception: it is included from the bottom of `player.asm`.)
+`main.asm` is the entry point: it disables interrupts, installs the IM2 music handler (`InitAYMusicIM2`), runs the animated title screen (`TitleScreenShow`, which blocks until ENTER/SPACE), plays the start fanfare and kicks off the game song, then clears the screen, draws the border and panel, primes the player walk cache (`PlayerBuildWalkCache`), and jumps to `GameMainLoop`. It also holds the include list — **new modules must be added there**, and include order defines the link order. Two includes sit apart at the bottom: `player_sprites.asm` is pulled in from `player.asm`, and `tape_loader.asm` is included *after* `savesna` so its TAP staging can reuse low memory without touching the snapshot.
 
 ### Main loop ordering is load-bearing
 
-`game.asm` calls, once per frame, ending in `halt`:
+`GameMainLoop` (`game.asm`) first checks three modal states in priority order — game won, life lost, inventory open — and if any is active it runs only that handler and `halt`s, freezing the world underneath. Otherwise it calls, once per frame:
 
 ```
 ShowRoom → ShowGamePanel → TorchesInRooms → ItemsInRooms → StarOnBackground
-         → AnimationsInRooms → PlayerUpdate → PlayerRender → ScanCursorKeysForRoomSwitch
+         → AnimationsInRooms → PlayerUpdate → PlayerApplyKnockback → PlayerRender
+         → GameWonCheckDoorEntry → ScanCursorKeysForRoomSwitch → InventoryScanEnterKey
 ```
 
-Torches must run before the stars so the stars know where the fire is; items must be placed before the stars look for free cells. The player renders last, over everything. Reordering these breaks the scenery.
+Torches must run before the stars so the stars know where the fire is; items must be placed before the stars look for free cells. The player renders last, over everything. `GameWonCheckDoorEntry` can flip into the victory state mid-frame, which then suppresses the debug room switch and the inventory key for the rest of that frame. Reordering these breaks the scenery.
 
 ### Room map index vs. room ID — the most common source of confusion
 
@@ -81,11 +89,23 @@ Because every room sprite sits on the attribute grid, **the walking surface is a
 
 The probes never read the player's own frame, which is still on screen during `PlayerUpdate` (he is drawn last and erased inside `PlayerRender`). That constraint is why the step-up probe uses the uncovered strip instead of the whole footprint, and why a step up does not re-check its footing.
 
-Jumping is a 17-entry `PlayerJumpDeltas` table, not physics. Controls: Z/X, O/P, or Kempston left/right to walk; Space or fire to jump (hold a direction at take-off to jump that way).
+Jumping is a 17-entry `PlayerJumpDeltas` table, not physics. Controls: Z/X, O/P, or Kempston left/right to walk; Space or fire to jump (hold a direction at take-off to jump that way); ENTER opens the inventory.
 
-### Music
+### Lives, energy and modal windows
 
-`ay_music.asm` is a self-contained tracker: note constants (`N_C4`, `N_HOLD`, `AY_ACCENT`), patterns, and an order list, ticked once per frame by the IM2 handler via `AYMusicTick` — independent of the main loop's timing. The header comment documents the song's structure (150 BPM, 5 frames per step, 32-bar AABA loop).
+`game.asm` owns the run state: `PlayerLives` (starts at `PLAYER_LIVES_START`, 3) and `PlayerEnergy` (0..`PLAYER_ENERGY_MAX`, 10), both shown in the panel. `PlayerLoseEnergyAmount` is the single sink for damage — spending the last energy point costs a life and refills energy (except on the final life), then calls `LifeLostShow`. `life_lost.asm` and `game_won.asm` are modal windows drawn inside the game field: they raise a pending/open state that `GameMainLoop` sees at the top of the frame and, while open, freeze the room pipeline until dismissed. Each exposes a `Reset*` routine called from `ResetGame`.
+
+### Inventory
+
+`inventory.asm` is another modal window holding up to `INV_MAX_ITEMS` (3) carried slots. ENTER opens it — and, when the player is standing on a ground item with a free slot, picks that item up first; on the old bridge it instead uses the pickaxe. SPACE closes it. While open, `GameMainLoop` skips the entire room/player pipeline so nothing animates beneath it. Closing does not restore saved pixels; it invalidates every room-scoped module's dirty-room cache (the same trick `CollectItem` uses) so the next frame simply repaints the whole field.
+
+### Title screen
+
+`title_screen.asm` runs once before the game: it decompresses its background, letters the logo in at runtime, twinkles stars and walks the hero across, then blocks in `TitleScreenShow` until a fresh ENTER or SPACE press. It depends on the IM2 handler already being installed so `halt` advances both its animation and the title music at 50 Hz.
+
+### Music and sound
+
+`ay_music.asm` is a self-contained tracker: note constants (`N_C4`, `N_HOLD`, `AY_ACCENT`), patterns, and an order list, ticked once per frame by the IM2 handler via `AYMusicTick` — independent of the main loop's timing. The header comment documents the song's structure (150 BPM, 5 frames per step, 32-bar AABA loop). `beeper_sfx.asm` complements it with short 1-bit BEEPER effects (footsteps, jump, inventory) that click over the top without disturbing the AY music the IM2 handler keeps playing.
 
 ### Debug navigation
 
