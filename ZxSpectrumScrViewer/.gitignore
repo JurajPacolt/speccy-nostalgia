@@ -1,0 +1,26 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# User-specific files
+*.user
+*.rsuser
+*.suo
+
+# IDE folders
+.vs/
+.vscode/
+
+# Test and coverage output
+TestResults/
+*.coverage
+*.coveragexml
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+
+# OS files
+Thumbs.db
+Desktop.ini
