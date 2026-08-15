@@ -13,16 +13,16 @@ SpriteGround:
 
 SpriteDataGround:
         defb  255, 255, 255, 255, 255, 255
-        defb  255, 255, 255, 255, 255, 255
-        defb  107, 255, 107, 107, 255, 107
-        defb  255, 255, 255, 255, 255, 255
-        defb  181, 181, 255, 181, 181, 255
-        defb  255, 255, 255, 255, 255, 255
-        defb  255, 206, 206, 255, 206, 206
-        defb  251, 251, 255, 251, 251, 255
+        defb  255, 255, 119, 255, 255, 255
+        defb  255, 221, 255, 119, 255, 221
+        defb   85, 255, 221, 255,  85, 255
+        defb  255,  85, 187,  85, 255,  85
+        defb   85, 238,  85, 187,  85, 238
+        defb  170,  85, 170,  85, 170,  85
+        defb   17, 170,  85, 170,  17, 170
 
 SpriteAttributesGround:
-        defb    7,   7,   7,   7,   7,   7
+        defb    2,   2,   2,   2,   2,   2
 
 ;-------------------------------------------------------------------------------
 ; A short piece of the ground, for the ledges.
@@ -32,59 +32,176 @@ SpriteGroundSmall:
 SpriteDataGroundSmall:
         defb  255, 255
         defb  255, 255
-        defb  107, 255
-        defb  255, 255
-        defb  181, 181
-        defb  255, 255
-        defb  255, 206
-        defb  251, 251
+        defb  255, 221
+        defb   85, 255
+        defb  255,  85
+        defb   85, 238
+        defb  170,  85
+        defb   17, 170
 
 SpriteAttributesGroundSmall:
-        defb    7,   7
+        defb    2,   2
 
 ;-------------------------------------------------------------------------------
-; A tuft of the hard grass that grows on the rock.
+; A tall tuft of the hard grass that grows on the rock.
 SpriteGrass:
-        defb    1, 8
+        defb    2, 16
 
 SpriteDataGrass:
+        defb    0,   0
+        defb    1,   0
+        defb   33,   4
+        defb   33,   8
+        defb   17,   8
+        defb   19,  16
+        defb  147,  18
+        defb   75,  36
+        defb   75,  36
+        defb   39,  72
+        defb   39,  80
+        defb   23, 160
+        defb   31, 160
+        defb   15, 128
+        defb    7, 128
+        defb    3,   0
+
+SpriteAttributesGrass:
+        defb   68,  68
+        defb    4,   4
+
+;-------------------------------------------------------------------------------
+; A tuft of grass bent by the wind from the sea.
+SpriteGrassWind:
+        defb    2, 16
+
+SpriteDataGrassWind:
+        defb    0,   0
+        defb    0,   8
+        defb    0,  16
+        defb    2,  32
+        defb    4,  68
+        defb    4, 136
+        defb   69,  16
+        defb   37,  32
+        defb   38,  32
+        defb   22,  64
+        defb   30, 128
+        defb   14, 128
+        defb   15,   0
+        defb    7,   0
+        defb    7,   0
+        defb    3,   0
+
+SpriteAttributesGrassWind:
+        defb    4,  68
+        defb    4,   4
+
+;-------------------------------------------------------------------------------
+; A low wide tuft of grass growing close to the stone.
+SpriteGrassLow:
+        defb    2, 16
+
+SpriteDataGrassLow:
+        defb    0,   0
+        defb    0,   0
+        defb    0,   0
+        defb   64,   2
+        defb   33,   4
+        defb   33,   8
+        defb   17,  16
+        defb  145,  18
+        defb   83,  36
+        defb   75,  72
+        defb   43, 144
+        defb   23, 160
+        defb   15, 192
+        defb   15, 128
+        defb    7,   0
+        defb    3,   0
+
+SpriteAttributesGrassLow:
+        defb   68,   4
+        defb    4,   4
+
+;-------------------------------------------------------------------------------
+; A young tuft of grass, one character square.
+SpriteGrassSmall:
+        defb    1, 8
+
+SpriteDataGrassSmall:
         defb    0
         defb   16
         defb  146
-        defb  150
-        defb  186
-        defb  219
-        defb  123
-        defb   24
+        defb   84
+        defb   88
+        defb   56
+        defb   56
+        defb   16
 
-SpriteAttributesGrass:
+SpriteAttributesGrassSmall:
         defb   68
 
 ;-------------------------------------------------------------------------------
-; A boulder, two characters wide.
+; A small loose stone, one character square.
+SpriteRockSmall:
+        defb    1, 8
+
+SpriteDataRockSmall:
+        defb    0
+        defb   28
+        defb  126
+        defb  247
+        defb  255
+        defb   94
+        defb   60
+        defb    0
+
+SpriteAttributesRockSmall:
+        defb    7
+
+;-------------------------------------------------------------------------------
+; A flat weathered stone, two characters wide.
+SpriteRockFlat:
+        defb    2, 8
+
+SpriteDataRockFlat:
+        defb    0,   0
+        defb    3, 224
+        defb   31, 248
+        defb  119, 118
+        defb  255, 255
+        defb   93, 222
+        defb   63, 252
+        defb    0,   0
+
+SpriteAttributesRockFlat:
+        defb   71,   7
+
+;-------------------------------------------------------------------------------
+; An irregular boulder, two characters square.
 SpriteRock:
         defb    2, 16
 
 SpriteDataRock:
         defb    0,   0
-        defb    7, 224
-        defb   31, 248
-        defb   59, 252
-        defb  127, 255
-        defb  123, 239
-        defb  255, 255
-        defb  239, 251
-        defb  255, 255
-        defb  123, 239
+        defb    3,   0
+        defb   15, 152
+        defb   31, 124
         defb   63, 252
-        defb   31, 248
-        defb    0,   0
-        defb    0,   0
-        defb    0,   0
+        defb  127, 126
+        defb  247, 190
+        defb  253, 255
+        defb  239, 126
+        defb  123, 191
+        defb  110, 238
+        defb  119, 124
+        defb   55, 126
+        defb   57, 220
+        defb   31, 252
         defb    0,   0
 
 SpriteAttributesRock:
-        defb    7,   7
+        defb   71,   7
         defb    7,   7
 
 ;-------------------------------------------------------------------------------
@@ -94,61 +211,286 @@ SpriteLadder:
 
 SpriteDataLadder:
         defb  192,  12
+        defb  128,   8
+        defb  255, 252
+        defb  170, 168
         defb  192,  12
-        defb  255, 255
-        defb  255, 255
+        defb  128,   8
         defb  192,  12
+        defb  128,   8
+        defb  255, 252
+        defb  170, 168
         defb  192,  12
+        defb  128,   8
         defb  192,  12
+        defb  128,   8
+        defb  255, 252
+        defb  170, 168
         defb  192,  12
-        defb  255, 255
-        defb  255, 255
+        defb  128,   8
         defb  192,  12
+        defb  128,   8
+        defb  255, 252
+        defb  170, 168
         defb  192,  12
-        defb  192,  12
-        defb  192,  12
-        defb  255, 255
-        defb  255, 255
-        defb  192,  12
-        defb  192,  12
-        defb  192,  12
-        defb  192,  12
-        defb  255, 255
-        defb  255, 255
-        defb  192,  12
-        defb  192,  12
+        defb  128,   8
 
 SpriteAttributesLadder:
-        defb   70,  70
-        defb   70,  70
-        defb   70,  70
+        defb   70,   6
+        defb   70,   6
+        defb    6,   6
+
+;-------------------------------------------------------------------------------
+; A ladder with a snapped and crossed middle section.
+SpriteLadderBroken:
+        defb    2, 24
+
+SpriteDataLadderBroken:
+        defb  192,  12
+        defb  128,   8
+        defb  255, 252
+        defb  170, 168
+        defb  192,  12
+        defb  128,   8
+        defb  192,  12
+        defb  128,   8
+        defb  255, 252
+        defb  170, 168
+        defb  192,  12
+        defb  128,   8
+        defb  192,  12
+        defb  144,  40
+        defb  200,  76
+        defb  132, 136
+        defb  195,  12
+        defb  131,   8
+        defb  196, 140
+        defb  136,  72
+        defb  255, 252
+        defb  170, 168
+        defb  192,  12
+        defb  128,   8
+
+SpriteAttributesLadderBroken:
+        defb   70,   6
+        defb   70,   6
+        defb    6,   6
+
+;-------------------------------------------------------------------------------
+; A row of four rusted spikes.
+SpriteSpikes:
+        defb    4, 16
+
+SpriteDataSpikes:
+        defb    0,   0,   0,   0
+        defb    0,   8,   0,   0
+        defb    0,   8,   0,   8
+        defb    8,   8,   0,   8
+        defb    8,  28,   8,   8
+        defb    8,  20,   8,  20
+        defb   28,  28,   8,  28
+        defb   20,  54,  20,  20
+        defb   28,  62,  28,  62
+        defb   54,  54,  20,  54
+        defb   58, 123,  58,  58
+        defb   54,  85,  54,  85
+        defb  127, 127,  62, 127
+        defb   85, 213, 213,  85
+        defb  123, 187, 251, 187
+        defb  252, 252, 252, 252
+
+SpriteAttributesSpikes:
+        defb   71,  71,  71,  71
+        defb    7,   7,   7,   7
+
+;-------------------------------------------------------------------------------
+; A rough five-course brick barrier.
+SpriteBrickWall:
+        defb    6, 40
+
+SpriteDataBrickWall:
+        defb  255, 255, 255, 255, 255, 255
+        defb  255, 255, 255, 255, 255, 255
+        defb  226,  46,  34, 226,  46,  34
+        defb  192,  12,   0, 192,  12,   0
+        defb  234, 174, 170, 234, 174, 170
+        defb  192,  12,   0, 192,  12,   0
+        defb  226,  46,  34, 226,  46,  34
+        defb  192,  12,   0, 192,  12,   0
+        defb  255, 255, 255, 255, 255, 255
+        defb  255, 255, 255, 255, 255, 255
+        defb   35,  34,  50,  35,  34,  50
+        defb    3,   0,  48,   3,   0,  48
+        defb  171, 170, 186, 171, 170, 186
+        defb    3,   0,  48,   3,   0,  48
+        defb   35,  34,  50,  35,  34,  50
+        defb    3,   0,  48,   3,   0,  48
+        defb  255, 255, 255, 255, 255, 255
+        defb  255, 255, 255, 255, 255, 255
+        defb  226,  46,  34, 226,  46,  34
+        defb  192,  12,   0, 192,  12,   0
+        defb  234, 174, 170, 234, 174, 170
+        defb  192,  12,   0, 192,  12,   0
+        defb  226,  46,  34, 226,  46,  34
+        defb  192,  12,   0, 192,  12,   0
+        defb  255, 255, 255, 255, 255, 255
+        defb  255, 255, 255, 255, 255, 255
+        defb   35,  34,  50,  35,  34,  50
+        defb    3,   0,  48,   3,   0,  48
+        defb  171, 170, 186, 171, 170, 186
+        defb    3,   0,  48,   3,   0,  48
+        defb   35,  34,  50,  35,  34,  50
+        defb    3,   0,  48,   3,   0,  48
+        defb  255, 255, 255, 255, 255, 255
+        defb  255, 255, 255, 255, 255, 255
+        defb  226,  46,  34, 226,  46,  34
+        defb  192,  12,   0, 192,  12,   0
+        defb  234, 174, 170, 234, 174, 170
+        defb  192,  12,   0, 192,  12,   0
+        defb  226,  46,  34, 226,  46,  34
+        defb  192,  12,   0, 192,  12,   0
+
+SpriteAttributesBrickWall:
+        defb   66,  66,  66,  66,  66,  66
+        defb    2,   2,   2,   2,   2,   2
+        defb    2,   2,   2,   2,   2,   2
+        defb    2,   2,   2,   2,   2,   2
+        defb    2,   2,   2,   2,   2,   2
+
+;-------------------------------------------------------------------------------
+; A twisted hanging rope segment.
+SpriteRope:
+        defb    1, 24
+
+SpriteDataRope:
+        defb   48
+        defb   72
+        defb  132
+        defb   72
+        defb   48
+        defb   24
+        defb   36
+        defb   66
+        defb   48
+        defb   72
+        defb  132
+        defb   72
+        defb   48
+        defb   24
+        defb   36
+        defb   66
+        defb   48
+        defb   72
+        defb  132
+        defb   72
+        defb   48
+        defb   24
+        defb   36
+        defb   66
+
+SpriteAttributesRope:
+        defb   70
+        defb    6
+        defb    6
 
 ;-------------------------------------------------------------------------------
 ; A low cloud - on this island it always carries rain.
 SpriteCloud:
-        defb    3, 16
+        defb    5, 24
 
 SpriteDataCloud:
-        defb    3, 252,   0
-        defb   15, 255,   0
-        defb   63, 255, 192
-        defb  127, 255, 240
-        defb  127, 255, 252
-        defb  255, 255, 255
-        defb  127, 255, 254
-        defb   31, 255, 248
-        defb    0,   0,   0
-        defb    0,   0,   0
-        defb    0,   0,   0
-        defb    0,   0,   0
-        defb    0,   0,   0
-        defb    0,   0,   0
-        defb    0,   0,   0
-        defb    0,   0,   0
+        defb    0,   0, 255, 128,   0
+        defb    0,   3, 255, 224,   0
+        defb    0,  15, 255, 248,   0
+        defb    0,  31, 247, 116,   0
+        defb    0,  63, 255, 254,   0
+        defb    7, 255, 255, 255, 224
+        defb   31, 255, 255, 255, 248
+        defb   55, 119, 119, 119, 116
+        defb   63, 255, 255, 255, 254
+        defb   93, 221, 221, 221, 220
+        defb  127, 255, 255, 255, 255
+        defb   85,  85,  85,  85,  84
+        defb  127, 255, 255, 255, 255
+        defb   53,  85,  85,  85,  84
+        defb   59, 187, 186, 170, 170
+        defb   21,  85,  85,  85,  84
+        defb    6, 170, 170, 170, 160
+        defb    1,  85,  84,  68,  64
+        defb    0,  26, 170, 168,   0
+        defb    0,   0,   8,   0,   0
+        defb    0,   0,   0,   0,   0
+        defb    0,   0,   0,   0,   0
+        defb    0,   0,   0,   0,   0
+        defb    0,   0,   0,   0,   0
 
 SpriteAttributesCloud:
-        defb   71,  71,  71
-        defb   71,  71,  71
+        defb   71,  71,  71,  71,  71
+        defb   71,   7,   7,  69,   5
+        defb   69,   5,   5,   5,   5
+
+;-------------------------------------------------------------------------------
+; One heavy drop falling below a rain cloud.
+SpriteRainDrop:
+        defb    1, 16
+
+SpriteDataRainDrop:
+        defb    0
+        defb   16
+        defb   56
+        defb  124
+        defb  254
+        defb  254
+        defb  124
+        defb   56
+        defb   16
+        defb    0
+        defb    0
+        defb    0
+        defb    0
+        defb    0
+        defb    0
+        defb    0
+
+SpriteAttributesRainDrop:
+        defb   69
+        defb    5
+
+;-------------------------------------------------------------------------------
+; The hanging fire in the middle levels of the island.
+SpriteFire:
+        defb    2, 24
+
+SpriteDataFire:
+        defb    1,   0
+        defb    3,   0
+        defb    7,   0
+        defb   23, 128
+        defb   31, 128
+        defb   63, 192
+        defb  127, 224
+        defb   63, 192
+        defb   31, 128
+        defb   47,  64
+        defb   31, 128
+        defb   15,   0
+        defb   31, 128
+        defb   63, 192
+        defb  127, 224
+        defb  255, 240
+        defb  127, 224
+        defb   63, 192
+        defb   31, 128
+        defb   15,   0
+        defb   31, 128
+        defb   63, 192
+        defb  127, 224
+        defb   63, 192
+
+SpriteAttributesFire:
+        defb   70,  70
+        defb   70,  66
+        defb   66,  66
 
 ;-------------------------------------------------------------------------------
 ; A wooden crate, the kind the tools are packed in.
@@ -157,69 +499,437 @@ SpriteCrate:
 
 SpriteDataCrate:
         defb  255, 255
-        defb  128,   1
         defb  176,  13
-        defb  140,  49
+        defb  174, 187
         defb  131, 193
-        defb  131, 193
+        defb  171, 235
         defb  140,  49
-        defb  176,  13
+        defb  186, 175
         defb  128,   1
-        defb  128,   1
+        defb  255, 255
         defb  176,  13
-        defb  140,  49
+        defb  174,  51
         defb  131, 193
-        defb  131, 193
+        defb  171, 235
         defb  140,  49
+        defb  178,  47
         defb  255, 255
 
 SpriteAttributesCrate:
-        defb    6,   6
-        defb    6,   6
+        defb   70,   6
+        defb    6,   2
 
 ;-------------------------------------------------------------------------------
-; A dead tree, four characters wide and three high.
+; A dead tree, six characters wide and five high.
 SpriteDeadTree:
-        defb    4, 24
+        defb    6, 40
 
 SpriteDataDeadTree:
-        defb    0,   0,   0,   0
-        defb    1, 152, 192,   0
-        defb    1, 249, 192,   0
-        defb    0, 127,   0,  12
-        defb  192,  30,   1, 220
-        defb  192,  12,   3, 248
-        defb  110,  14,   7, 240
-        defb   63,  14,  31, 224
-        defb   63, 135, 190,   0
-        defb    7, 199, 252,   0
-        defb    3, 231, 240,   0
-        defb    1, 247, 224,   0
-        defb    0, 127, 192,   0
-        defb    0,  63, 128,   0
-        defb    0,  31, 128,   0
-        defb    0,  15,   0,   0
-        defb    0,  15,   0,   0
-        defb    0,  15,   0,   0
-        defb    0,  15,   0,   0
-        defb    0,  15, 128,   0
-        defb    0,   7, 128,   0
-        defb    0,  15, 192,   0
-        defb    0, 127, 248,   0
-        defb    0, 127, 248,   0
+        defb    0,   0,   0,   0,   0,   0
+        defb    0,   0,  24,   0,   0,   0
+        defb    0,   0,  60,   0,   0,   0
+        defb    0,  14,  60,  24,   0,   0
+        defb    0,  15,  60, 120,   0,   0
+        defb    0,   7, 220, 240,   0,   0
+        defb    0,   1, 255, 224,   1, 134
+        defb    0,   0, 127, 128,   7, 206
+        defb    0,   0,  63,   0,  15, 220
+        defb  192,  96,  30,   0,  31, 184
+        defb  224,  96,  30,   0,  63, 112
+        defb  115, 240,  30,   0, 125, 224
+        defb   59, 240,  14,   0, 255, 192
+        defb   31, 240,  15,   1, 248,   0
+        defb   15, 248,  11, 195, 240,   0
+        defb    3, 248,   7, 239, 224,   0
+        defb    0, 252,   7, 255, 192,   0
+        defb    0, 126,   7, 253,   0,   0
+        defb    0,  61,   7, 254,   0,   0
+        defb    0,  31, 143, 252,   0,   0
+        defb    0,  15, 207, 184,   0,   0
+        defb    0,   7, 207, 224,   0,   0
+        defb    0,   7, 251, 192,   0,   0
+        defb    0,   1, 255, 192,   0,   0
+        defb    0,   0, 255, 192,   0,   0
+        defb    0,   0, 127,   0,   0,   0
+        defb    0,   0,  31, 128,   0,   0
+        defb    0,   0,  31, 128,   0,   0
+        defb    0,   0,  27, 128,   0,   0
+        defb    0,   0,  31, 128,   0,   0
+        defb    0,   0,  15, 192,   0,   0
+        defb    0,   0,  15,  64,   0,   0
+        defb    0,   0,  15, 192,   0,   0
+        defb    0,   0,  15, 192,   0,   0
+        defb    0,   0,  13, 192,   0,   0
+        defb    0,   0,  15, 192,   0,   0
+        defb    0,   0, 127, 252,   0,   0
+        defb    0,  31, 255, 191, 240,   0
+        defb    0,  63, 255, 255, 248,   0
+        defb    0,  63, 199, 239, 248,   0
 
 SpriteAttributesDeadTree:
-        defb    7,   7,   7,   7
-        defb    7,   7,   7,   7
-        defb    7,   7,   7,   7
+        defb   70,  70,  70,  70,  70,  70
+        defb   70,  70,  70,   6,   6,   6
+        defb    6,   6,   6,   6,   6,   6
+        defb    6,   6,   6,   6,   6,   6
+        defb    6,   6,   6,   6,   6,   6
+
+;-------------------------------------------------------------------------------
+; A living tree with a broad wind-shaped crown.
+SpriteLivingTree:
+        defb    6, 40
+
+SpriteDataLivingTree:
+        defb    0,   0,   0,   0,   0,   0
+        defb    0,   0,   0,   0,   0,   0
+        defb    0,   1, 248, 252,   0,   0
+        defb    0,   7, 119, 119,   0,   0
+        defb    0,   7, 255, 255,   0,   0
+        defb    0,  15, 255, 255, 128,   0
+        defb    0,  15, 255, 255, 128,   0
+        defb    1, 119, 119, 119, 118,   0
+        defb    7, 255, 255, 255, 255, 128
+        defb    7, 255, 255, 255, 255, 128
+        defb   15, 255, 255, 255, 255, 192
+        defb    7, 119, 119, 119, 119,  64
+        defb   15, 255, 255, 255, 255, 192
+        defb   15, 255, 255, 255, 255, 192
+        defb   15, 255, 255, 255, 255, 192
+        defb    7, 119, 119, 119, 119,  64
+        defb    7, 255, 255, 255, 255, 128
+        defb    7, 255, 255, 255, 255, 128
+        defb    1, 255, 255, 255, 254,   0
+        defb    0,   7, 119, 119,  64,   0
+        defb    0,  15, 255, 255, 192,   0
+        defb    0,   3, 255, 255,   0,   0
+        defb    0,   0,  31, 192,   0,   0
+        defb    0,   0,   7,  64,   0,   0
+        defb    0,   0,   7, 192,   0,   0
+        defb    0,   0,   7, 192,   0,   0
+        defb    0,   0,  15, 192,   0,   0
+        defb    0,   0,  15, 192,   0,   0
+        defb    0,   0,  15, 192,   0,   0
+        defb    0,   0,  15, 192,   0,   0
+        defb    0,   0,   7, 192,   0,   0
+        defb    0,   0,   7, 192,   0,   0
+        defb    0,   0,   7, 192,   0,   0
+        defb    0,   0,   7, 192,   0,   0
+        defb    0,   0,   7, 192,   0,   0
+        defb    0,   0,   7, 192,   0,   0
+        defb    0,   0,  63, 248,   0,   0
+        defb    0,   3, 255, 255, 192,   0
+        defb    0,   7, 255, 255, 224,   0
+        defb    0,   7, 231, 239, 224,   0
+
+SpriteAttributesLivingTree:
+        defb   68,  68,  68,  68,  68,  68
+        defb   68,  68,  68,  68,  68,  68
+        defb    4,   4,   4,   4,   4,   4
+        defb    4,   4,   6,   6,   4,   4
+        defb    6,   6,   6,   6,   6,   6
+
+;-------------------------------------------------------------------------------
+; The broken boat where the castaway reaches the island.
+SpriteShipwreck:
+        defb    8, 40
+
+SpriteDataShipwreck:
+        defb    0,   0,   0,   0,   0,   0,   0,   0
+        defb    0,   0,   0,   0,   0,   0,   0,   0
+        defb    0,   0,   0,   0,   0,   0,   0,   0
+        defb    0,   0,   0,   0,   0,   0,   0,   0
+        defb    0,   0,  24,   0,   0,   0,   0,   0
+        defb    0,   0,  24,   0,   0,   0,   0,   0
+        defb    0,   0,  24,   0,   0,   0,   0,   0
+        defb    0,   0,  24,   0,   0,   0,   0,   0
+        defb    0,   0,  28,   0,   0,   0,   0,   0
+        defb    0,   0,  31,   0,   0,   0,   0,   0
+        defb    0,   0,  27, 128,   0,   0,   0,   0
+        defb    0,   0,  27, 224,   0,   0,   0,   0
+        defb    0,   0,  27, 240,   0,   0,   0,   0
+        defb    0,   0,  26, 124,   0,   0,   0,   0
+        defb    0,   0,  26,  14,   0,   0,   0,   0
+        defb    0,   0,  27, 199, 128,   0,   0,   0
+        defb    0,   0,  26,  61, 192,   0,   0,   0
+        defb    0,   0,  26,   0, 240,   0,   0,  96
+        defb    0,   0,  27, 240,  56,   0,   1, 224
+        defb    0,   0,  26,  15, 158,   0,   3, 128
+        defb    0,   0,  26,   0,  31,   0,  15,   0
+        defb    0,   0,  27, 251, 227,   0,  60,   0
+        defb    0,   0,  26, 127, 240,   0, 112,   0
+        defb    0,   0,  27, 128,   0,   1, 224,   0
+        defb   63, 255, 255, 255, 255, 255, 255, 142
+        defb   63, 255, 255, 255, 255, 255, 255, 254
+        defb   60,   0,  24,   0,   0,   0,  63, 240
+        defb   28,   0,  24,   0,   0,   0,  56, 248
+        defb   30,   0,   0,   0,   0,   0,   0,  60
+        defb   15, 255, 255, 192,   0,   0,   0,  60
+        defb    7, 255, 255, 255, 255, 255, 254, 248
+        defb    7, 128,   0,   0,  15, 255, 255, 240
+        defb    3, 128,   0,   0,   0,   0,   7, 192
+        defb    3, 255, 192,   0,   0,   0,  31, 128
+        defb    1, 255, 255, 255, 248,   0,  62,   0
+        defb    0, 255, 255, 255, 255, 255, 248,   0
+        defb    0,  63, 255, 255, 255, 255, 240,   0
+        defb    0,   0,   1, 255, 255, 255, 192,   0
+        defb    0,   0,   0,   0,  15, 255, 128,   0
+        defb    0,   0,   0,   0,   0,   0,   0,   0
+
+SpriteAttributesShipwreck:
+        defb    7,   7,   7,   7,   7,   7,   7,   7
+        defb    6,   6,   6,   6,   6,   6,   6,   6
+        defb    6,   6,   6,   6,   6,   6,   6,   6
+        defb    2,   2,   2,   2,   2,   2,   2,   2
+        defb    2,   2,   2,   2,   2,   2,   2,   2
+
+;-------------------------------------------------------------------------------
+; A timber guillotine with a cold blade.
+SpriteGuillotine:
+        defb    4, 48
+
+SpriteDataGuillotine:
+        defb    0,   0,   0,   0
+        defb    0,   0,   0,   0
+        defb   63, 255, 255, 252
+        defb   63, 255, 255, 252
+        defb   63, 255, 255, 252
+        defb   63, 255, 255, 252
+        defb   63, 255, 255, 252
+        defb   30,   1, 128, 120
+        defb   30,   1, 128, 120
+        defb   30,   1, 128, 120
+        defb   30,   1, 128, 120
+        defb   30,   1, 128, 120
+        defb   30,   1, 128, 120
+        defb   30,   1, 128, 120
+        defb   30,   3, 224, 120
+        defb   30,   3, 224, 120
+        defb   30,   3, 224, 120
+        defb   30,   7, 240, 120
+        defb   30,   7, 240, 120
+        defb   30,   7, 240, 120
+        defb   30,  15, 248, 120
+        defb   30,  15, 248, 120
+        defb   30,  15, 248, 120
+        defb   30,  31, 252, 120
+        defb   30,  31, 252, 120
+        defb   30,  31, 252, 120
+        defb   30,  63, 254, 120
+        defb   30,  63, 254, 120
+        defb   30,  63, 254, 120
+        defb   30, 127, 255, 120
+        defb   30, 127, 255, 120
+        defb   30,  85,  85, 120
+        defb   30,   0,   0, 120
+        defb   30,   0,   0, 120
+        defb   30,   0,   0, 120
+        defb   30,   0,   0, 120
+        defb   30,   0,   0, 120
+        defb   30,   0,   0, 120
+        defb   30,   0,   0, 120
+        defb   30,   0,   0, 120
+        defb   30,   0,   0, 120
+        defb   30,   0,   0, 120
+        defb   30,   0,   0, 120
+        defb   30,   0,   0, 120
+        defb  255, 255, 255, 255
+        defb  255, 255, 255, 255
+        defb  255, 255, 255, 255
+        defb  255, 255, 255, 255
+
+SpriteAttributesGuillotine:
+        defb    2,   2,   2,   2
+        defb    2,  71,  71,   2
+        defb    2,   7,   7,   2
+        defb    2,   7,   7,   2
+        defb    2,   2,   2,   2
+        defb    2,   2,   2,   2
+
+;-------------------------------------------------------------------------------
+; The islander carrying a saw.
+SpriteWorkerSaw:
+        defb    3, 40
+
+SpriteDataWorkerSaw:
+        defb    0,   0,   0
+        defb    0,   0,   0
+        defb    0,   0,   0
+        defb    0,  60,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0, 126,   0
+        defb    0, 254,   0
+        defb    1, 252,   0
+        defb    3, 188,   0
+        defb    7, 124,   0
+        defb   14, 252,   0
+        defb   29, 252,   0
+        defb   27, 252,   0
+        defb   28, 188,   0
+        defb  106,  60,   0
+        defb   32,  60,   0
+        defb    0,  60,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0, 255,   0
+        defb    0, 231,   0
+        defb    0, 231,   0
+        defb    1, 195, 128
+        defb    1, 195, 128
+        defb    1, 195, 128
+        defb    3, 129, 192
+        defb    3, 129, 192
+        defb    7, 129, 224
+        defb    7,   0, 224
+        defb    7,   0, 224
+        defb    6,   0,  96
+
+SpriteAttributesWorkerSaw:
+        defb    7,   7,   7
+        defb   70,  70,  70
+        defb    6,   6,   6
+        defb    6,   6,   6
+        defb    6,   6,   6
+
+;-------------------------------------------------------------------------------
+; The islander carrying a screwdriver.
+SpriteWorkerScrewdriver:
+        defb    3, 40
+
+SpriteDataWorkerScrewdriver:
+        defb    0,   0,   0
+        defb    0,   0,   0
+        defb    0,   0,   0
+        defb    0,  60,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0, 126,   0
+        defb    0, 255, 128
+        defb    1, 255, 192
+        defb    3, 189, 224
+        defb    7,  60, 241
+        defb   14,  60,  63
+        defb   12,  60,   1
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0, 255,   0
+        defb    0, 231,   0
+        defb    0, 231,   0
+        defb    1, 195, 128
+        defb    1, 195, 128
+        defb    1, 195, 128
+        defb    3, 129, 192
+        defb    3, 129, 192
+        defb    7, 129, 224
+        defb    7,   0, 224
+        defb    7,   0, 224
+        defb    6,   0,  96
+
+SpriteAttributesWorkerScrewdriver:
+        defb    7,   7,   7
+        defb   70,  70,  70
+        defb    6,   6,   6
+        defb    6,   6,   6
+        defb    6,   6,   6
+
+;-------------------------------------------------------------------------------
+; The islander carrying a pair of pliers.
+SpriteWorkerPliers:
+        defb    3, 40
+
+SpriteDataWorkerPliers:
+        defb    0,   0,   0
+        defb    0,   0,   0
+        defb    0,   0,   0
+        defb    0,  60,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0, 126,   0
+        defb    1, 255, 128
+        defb    3, 255, 192
+        defb   71, 189, 225
+        defb   47,  60, 242
+        defb   28,  60,  52
+        defb    8,  60,   8
+        defb   16,  60,   4
+        defb   32,  60,   2
+        defb   64,  60,   1
+        defb    0,  60,   0
+        defb    0,  60,   0
+        defb    0, 126,   0
+        defb    0, 126,   0
+        defb    0, 255,   0
+        defb    0, 231,   0
+        defb    0, 231,   0
+        defb    1, 195, 128
+        defb    1, 195, 128
+        defb    1, 195, 128
+        defb    3, 129, 192
+        defb    3, 129, 192
+        defb    7, 129, 224
+        defb    7,   0, 224
+        defb    7,   0, 224
+        defb    6,   0,  96
+
+SpriteAttributesWorkerPliers:
+        defb    7,   7,   7
+        defb   70,  70,  70
+        defb    6,   6,   6
+        defb    6,   6,   6
+        defb    6,   6,   6
 
 ;-------------------------------------------------------------------------------
 ; The names the rooms call the sprites by.
 SPRITE_GROUND                   equ SpriteGround
 SPRITE_GROUND_SMALL             equ SpriteGroundSmall
 SPRITE_GRASS                    equ SpriteGrass
+SPRITE_GRASS_WIND               equ SpriteGrassWind
+SPRITE_GRASS_LOW                equ SpriteGrassLow
+SPRITE_GRASS_SMALL              equ SpriteGrassSmall
+SPRITE_ROCK_SMALL               equ SpriteRockSmall
+SPRITE_ROCK_FLAT                equ SpriteRockFlat
 SPRITE_ROCK                     equ SpriteRock
 SPRITE_LADDER                   equ SpriteLadder
+SPRITE_LADDER_BROKEN            equ SpriteLadderBroken
+SPRITE_SPIKES                   equ SpriteSpikes
+SPRITE_BRICK_WALL               equ SpriteBrickWall
+SPRITE_ROPE                     equ SpriteRope
 SPRITE_CLOUD                    equ SpriteCloud
+SPRITE_RAIN_DROP                equ SpriteRainDrop
+SPRITE_FIRE                     equ SpriteFire
 SPRITE_CRATE                    equ SpriteCrate
 SPRITE_DEAD_TREE                equ SpriteDeadTree
+SPRITE_LIVING_TREE              equ SpriteLivingTree
+SPRITE_SHIPWRECK                equ SpriteShipwreck
+SPRITE_GUILLOTINE               equ SpriteGuillotine
+SPRITE_WORKER_SAW               equ SpriteWorkerSaw
+SPRITE_WORKER_SCREWDRIVER       equ SpriteWorkerScrewdriver
+SPRITE_WORKER_PLIERS            equ SpriteWorkerPliers

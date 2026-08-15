@@ -481,21 +481,72 @@ _GP_RoomTexts:
         defw  _GP_Room004
         defw  _GP_Room005
         defw  _GP_Room006
+        defw  _GP_Room007
+        defw  _GP_Room008
+        defw  _GP_Room009
+        defw  _GP_Room010
+        defw  _GP_Room011
+        defw  _GP_Room012
+        defw  _GP_Room013
+        defw  _GP_Room014
+        defw  _GP_Room015
+        defw  _GP_Room016
+        defw  _GP_Room017
+        defw  _GP_Room018
+        defw  _GP_Room019
+        defw  _GP_Room020
+        defw  _GP_Room021
+        defw  _GP_Room022
+        defw  _GP_Room023
 
 ; The gothic font is eight pixels wide, so a name has to hold to the 32
 ; characters of the row.
 _GP_Room000:
         defb  "NOWHERE", 0
 _GP_Room001:
-        defb  "WHERE THE SEA LEFT YOU", 0
+        defb  "THE UPPER GARDEN", 0
 _GP_Room002:
-        defb  "UNDER THE DEAD TREES", 0
+        defb  "THE HIGH LADDER", 0
 _GP_Room003:
-        defb  "THE OLD SAWMILL", 0
+        defb  "THE SPIKE PASSAGE", 0
 _GP_Room004:
-        defb  "RAIN OVER THE SWAMP", 0
+        defb  "THE SAWYER", 0
 _GP_Room005:
-        defb  "DOWN INTO THE QUARRY", 0
+        defb  "THE RAIN CATCHER", 0
 _GP_Room006:
-        defb  "THE BURNT GROUND", 0
+        defb  "THE CHARRED ROPE", 0
+_GP_Room007:
+        defb  "THE BRICK BARRIER", 0
+_GP_Room008:
+        defb  "THE ROPE LEDGE", 0
+_GP_Room009:
+        defb  "THE EMPTY LANDING", 0
+_GP_Room010:
+        defb  "THE LOWER TREE", 0
+_GP_Room011:
+        defb  "THE SCREWDRIVER MAN", 0
+_GP_Room012:
+        defb  "THE HANGING FIRE", 0
+_GP_Room013:
+        defb  "THE MAN WITH PLIERS", 0
+_GP_Room014:
+        defb  "THE SHIPWRECK", 0
+_GP_Room015:
+        defb  "THE SPIKE SHAFT", 0
+_GP_Room016:
+        defb  "THE EMPTY PASSAGE", 0
+_GP_Room017:
+        defb  "THE LONG LADDER", 0
+_GP_Room018:
+        defb  "THE RAIN GALLERY", 0
+_GP_Room019:
+        defb  "THE DEEP LADDER", 0
+_GP_Room020:
+        defb  "THE SILENT CELL", 0
+_GP_Room021:
+        defb  "THE BROKEN LADDER", 0
+_GP_Room022:
+        defb  "THE GUILLOTINE", 0
+_GP_Room023:
+        defb  "THE LOWEST RAIN", 0
 ;-------------------------------------------------------------------------------

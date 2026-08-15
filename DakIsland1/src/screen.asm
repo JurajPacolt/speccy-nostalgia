@@ -67,7 +67,7 @@ PANEL_TEXT_COL            equ 0
 PANEL_TEXT_LENGTH         equ 32
 
 ; How many rooms the table of the names in the panel has.
-PANEL_ROOMS_COUNT         equ 7
+PANEL_ROOMS_COUNT         equ 24
 
 ; The colours of the panel. The colours of the picture are in its own data.
 PANEL_SKULL_ATTR          equ 71 ; Bright white, bone in the moonlight.

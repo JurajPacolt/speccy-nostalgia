@@ -242,13 +242,19 @@ def main() -> None:
     zx.write_preview(SCREEN_PATH, screen.image(scale=3))
 
     drawn = sorted(number for number in rooms if rooms[number])
-    rows = (len(drawn) + 1) // 2
-    sheet = Image.new("RGB", (256 * 2 + 12, rows * (192 + 6)), (24, 24, 24))
+    sheet_cols = min(4, len(drawn))
+    rows = (len(drawn) + sheet_cols - 1) // sheet_cols
+    sheet = Image.new(
+        "RGB",
+        (256 * sheet_cols + 12 * (sheet_cols - 1), rows * (192 + 6)),
+        (24, 24, 24),
+    )
     for index, number in enumerate(drawn):
         one = build_screen(rooms[number], panel, sprites, report,
                            names.get(number, ""))
         sheet.paste(one.image(scale=1),
-                    ((index % 2) * (256 + 12), (index // 2) * (192 + 6)))
+                    ((index % sheet_cols) * (256 + 12),
+                     (index // sheet_cols) * (192 + 6)))
     zx.write_preview(ROOMS_PATH, sheet)
 
     print("the game starts in room {} - {}".format(start_room, names.get(start_room)))
