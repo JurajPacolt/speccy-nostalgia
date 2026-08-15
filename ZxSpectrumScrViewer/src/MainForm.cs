@@ -27,6 +27,7 @@ public partial class MainForm : Form
     public MainForm(string? initialFilePath = null)
     {
         InitializeComponent();
+        Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
         ApplyModernTheme();
 
         if (!string.IsNullOrWhiteSpace(initialFilePath))

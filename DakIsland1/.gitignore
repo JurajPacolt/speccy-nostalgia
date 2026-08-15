@@ -1,0 +1,3 @@
+*.sna
+*.tap
+__pycache__/
